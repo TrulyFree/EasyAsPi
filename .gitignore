@@ -9,3 +9,5 @@
 .externalNativeBuild
 /test
 /gradle
+/gradlew
+/gradlew.bat
