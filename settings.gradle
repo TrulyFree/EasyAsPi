@@ -18,4 +18,10 @@
  * Raspberry Pi is a trademark of the Raspberry Pi Foundation.
  */
 
-include ':app', ':test', ':lib'
+/**
+ * Modify this file in order to compile your own projects when building the application.
+ *
+ * See README.md on details of how to build your own projects.
+ */
+
+include ':app', ':lib'
