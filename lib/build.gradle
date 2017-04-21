@@ -1,0 +1,71 @@
+/*
+ * EasyAsPi: A phone-based interface for the Raspberry Pi.
+ * Copyright (C) 2017  vtcakavsmoace
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Raspberry Pi is a trademark of the Raspberry Pi Foundation.
+ */
+
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.0"
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 25
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    lintOptions {
+        abortOnError false
+    }
+}
+
+dependencies {
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+    })
+    compile group: 'com.android.support', name: 'appcompat-v7', version: '25.3.1'
+    compile group: 'com.android.support', name: 'design', version: '25.3.1'
+    compile group: 'com.github.TrulyFree', name: 'Modular6', version: 'v0.1.2-beta'
+    compile group: 'com.google.code.gson', name: 'gson', version: '2.8.0'
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'org.jetbrains', name: 'annotations-java5', version: '15.0'
+    compile group: 'com.google.android.tools', name: 'dx', version: '1.7'
+}
+
+task deleteJar(type: Delete) {
+    delete 'libs/EasyAsPi.jar'
+}
+
+task createJar(type: Copy) {
+    from('build/intermediates/bundles/debug/')
+    into('libs/jars/')
+    include('classes.jar')
+    rename('classes.jar', 'EasyAsPi.jar')
+}
+
+createJar.dependsOn(deleteJar, build)

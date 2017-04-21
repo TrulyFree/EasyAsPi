@@ -1,0 +1,41 @@
+<!--
+  ~ EasyAsPi: A phone-based interface for the Raspberry Pi.
+  ~ Copyright (C) 2017  vtcakavsmoace
+  ~
+  ~ This program is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  ~
+  ~ Raspberry Pi is a trademark of the Raspberry Pi Foundation.
+  -->
+
+<resources>
+    <string name="app_name">EasyAsPi</string>
+    <string name="title_home">Crust</string>
+    <string name="title_modules">Filling</string>
+    <string name="no_modules_yet">Looks like you don\'t have any modules yet.\nAdd them in the Crust!</string>
+    <string name="home_text_welcome">Welcome to EasyAsPi!</string>
+    <string name="new_module">New Module:</string>
+    <string name="new_module_config_configurl">Configuration URL for New Module</string>
+    <string name="new_module_config_confirm">Get New Module</string>
+    <string name="button_validate">Validate</string>
+    <string name="module_returned_configname">Module Name</string>
+    <string name="module_returned_configversion">Module Version</string>
+    <string name="module_returned_configurl">Configuration URL</string>
+    <string name="module_returned_jarurl">Jar URL</string>
+    <string name="module_returned_dependencies">Dependencies:</string>
+    <string name="app_name_module">EasyAsPi Module</string>
+    <string name="module_launch">Launch</string>
+    <string name="button_refresh_all">Refresh All</string>
+    <string name="button_cancel">Cancel</string>
+    <string name="button_delete">Delete</string>
+</resources>
