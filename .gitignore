@@ -8,6 +8,6 @@
 /captures
 .externalNativeBuild
 /test
-/gradle
+/gradle/
 /gradlew
 /gradlew.bat
