@@ -108,6 +108,10 @@ public class ModuleHandler implements Module {
                         false,
                         writtenFiles.peek());
                 alreadyDownloaded.push(config.getJarUrl());
+            } else if (callback != null) {
+                callback.onStart();
+                callback.onProgress(100);
+                callback.onFinish();
             }
 
             for (Config dependency : config.getDependencies()) {
@@ -122,6 +126,10 @@ public class ModuleHandler implements Module {
                             false,
                             writtenFiles.peek());
                     alreadyDownloaded.push(dependency.getJarUrl());
+                } else if (callback != null) {
+                    callback.onStart();
+                    callback.onProgress(100);
+                    callback.onFinish();
                 }
             }
             refreshConfigs();
