@@ -91,8 +91,6 @@ public class MainActivity extends EAPActivity {
         fileHandler = new FileHandler(this);
         moduleHandler = new ModuleHandler(this);
 
-        moduleHandler.setup();
-
         setContentView(R.layout.activity_main);
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
@@ -196,7 +194,7 @@ public class MainActivity extends EAPActivity {
                                                             final ProgressBar progressBar = (ProgressBar) findViewById(R.id.new_module_config_downloadprogress);
                                                             try {
                                                                 moduleHandler.getNewModule(makeModuleCallback(stager, progressBar),
-                                                                        finalconfig);
+                                                                        finalconfig, null, true);
                                                             } catch (IOException e) {
                                                                 e.printStackTrace();
                                                                 runOnUiThread(new Runnable() {
@@ -281,6 +279,7 @@ public class MainActivity extends EAPActivity {
             }
         });
 
+        moduleHandler.setup();
         refreshFilling();
         return true;
     }

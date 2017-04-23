@@ -22,15 +22,21 @@ package io.github.trulyfree.easyaspi.lib.module;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
+import android.widget.Toast;
 
 import com.android.dx.command.dexer.Main;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.Stack;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import dalvik.system.DexClassLoader;
 import io.github.trulyfree.easyaspi.lib.EAPActivity;
@@ -46,7 +52,7 @@ public class ModuleHandler implements Module {
     private final EAPActivity activity;
     private ModuleConfig[] configs;
     private Gson gson;
-    private File configDir, undexedDir, dexedJar, optimizedDexDir;
+    private File configDir, jarDir, undexedDir, dexedJar, optimizedDexDir;
     private DexClassLoader classLoader;
 
     public ModuleHandler(@NonNull EAPActivity activity) {
@@ -60,7 +66,7 @@ public class ModuleHandler implements Module {
         return gson.fromJson(stringConfig, ModuleConfig.class);
     }
 
-    public boolean getNewModule(StagedCallback callback, @NonNull ModuleConfig config) throws IOException, JsonParseException {
+    public boolean getNewModule(StagedCallback callback, @NonNull ModuleConfig config, Stack<String> alreadyDownloaded, boolean refreshDexed) throws IOException, JsonParseException {
         DownloadHandler downloadHandler = activity.getDownloadHandler();
         FileHandler fileHandler = activity.getFileHandler();
 
@@ -92,28 +98,35 @@ public class ModuleHandler implements Module {
                 callback.setStages(stages);
             }
 
-            writtenFiles.push(fileHandler.generateFile("undexed", config.getName() + ".jar"));
+            writtenFiles.push(fileHandler.generateFile("jars", config.getName() + ".jar"));
             if (writtenFiles.peek().exists()) {
                 writtenFiles.peek().delete();
             }
-            fileHandler.writeFile(downloadHandler.getDownloadStream(config.getJarUrl()),
-                    callback,
-                    false,
-                    writtenFiles.peek());
-
-            for (Config dependency : config.getDependencies()) {
-                File dependencyFile = fileHandler.generateFile("undexed", dependency.getName() + ".jar");
-                if (dependencyFile.exists()) {
-                    dependencyFile.delete();
-                }
-                writtenFiles.push(dependencyFile);
-                fileHandler.writeFile(downloadHandler.getDownloadStream(dependency.getJarUrl()),
+            if (!alreadyDownloaded.contains(config.getJarUrl())) {
+                fileHandler.writeFile(downloadHandler.getDownloadStream(config.getJarUrl()),
                         callback,
                         false,
                         writtenFiles.peek());
+                alreadyDownloaded.push(config.getJarUrl());
+            }
+
+            for (Config dependency : config.getDependencies()) {
+                if (!alreadyDownloaded.contains(dependency.getJarUrl())) {
+                    File dependencyFile = fileHandler.generateFile("jars", dependency.getName() + ".jar");
+                    if (dependencyFile.exists()) {
+                        dependencyFile.delete();
+                    }
+                    writtenFiles.push(dependencyFile);
+                    fileHandler.writeFile(downloadHandler.getDownloadStream(dependency.getJarUrl()),
+                            callback,
+                            false,
+                            writtenFiles.peek());
+                    alreadyDownloaded.push(dependency.getJarUrl());
+                }
             }
             refreshConfigs();
-            refreshDexed();
+            if (refreshDexed)
+                refreshDexed();
         } catch (IOException e) {
             for (File file : writtenFiles) {
                 if (file.exists()) {
@@ -127,8 +140,8 @@ public class ModuleHandler implements Module {
 
     public boolean remove(StagedCallback callback, @NonNull ModuleConfig config) throws IOException {
         FileHandler fileHandler = activity.getFileHandler();
-        if (fileHandler.generateFile("config", config.getName() + ".json").delete() &&
-                fileHandler.generateFile("undexed", config.getName() + ".jar").delete()) {
+        File configFile = fileHandler.generateFile("config", config.getName() + ".json");
+        if (!configFile.exists() || configFile.delete()) {
             refreshAll(callback);
             return true;
         } else {
@@ -139,8 +152,13 @@ public class ModuleHandler implements Module {
     private void clearUntrackedJars() {
         FileHandler fileHandler = activity.getFileHandler();
         ArrayList<String> jarStrings = new ArrayList<>();
-        for (String file : activity.getDir("undexed", Context.MODE_PRIVATE).list()) {
-            jarStrings.add(file);
+        for (String file : jarDir.list()) {
+            int dir = file.lastIndexOf(File.separatorChar);
+            if (dir != -1) {
+                jarStrings.add(file.substring(dir));
+            } else {
+                jarStrings.add(file);
+            }
         }
         for (ModuleConfig config : getConfigs()) {
             jarStrings.remove(config.getName() + ".jar");
@@ -149,19 +167,19 @@ public class ModuleHandler implements Module {
             }
         }
         for (String jar : jarStrings) {
-            fileHandler.generateFile("undexed", jar).delete();
+            fileHandler.generateFile("jars", jar).delete();
         }
     }
 
     public void refreshAll(final StagedCallback callback) throws IOException, JsonParseException {
         refreshConfigs();
-        File jardir = activity.getDir("undexed", Context.MODE_PRIVATE);
-        File backupJarFolder = activity.getDir("undexed_backup", Context.MODE_PRIVATE);
-        if (backupJarFolder.exists()) {
-            activity.getFileHandler().deleteFile(backupJarFolder);
+        File undexedDir = activity.getDir("undexed", Context.MODE_PRIVATE);
+        File backupClassesFolder = activity.getDir("undexed_backup", Context.MODE_PRIVATE);
+        if (backupClassesFolder.exists()) {
+            activity.getFileHandler().deleteFile(backupClassesFolder);
         }
-        jardir.renameTo(backupJarFolder);
-        jardir.mkdirs();
+        undexedDir.renameTo(backupClassesFolder);
+        undexedDir.mkdirs();
         try {
             String[] stages = new String[configs.length];
             for (int i = 0; i < stages.length; i++) {
@@ -170,6 +188,7 @@ public class ModuleHandler implements Module {
             if (callback != null) {
                 callback.setStages(stages);
             }
+            Stack<String> alreadyDownloaded = new Stack<>();
             for (ModuleConfig config : configs) {
                 if (callback != null) {
                     callback.onStart();
@@ -200,18 +219,18 @@ public class ModuleHandler implements Module {
                     public void onFinish() {
                         current++;
                     }
-                }, config);
+                }, config, alreadyDownloaded, false);
                 if (callback != null) {
                     callback.onFinish();
                 }
             }
+            refreshDexed();
         } catch (Exception e) {
             e.printStackTrace();
-            activity.getFileHandler().deleteFile(jardir);
-            backupJarFolder.renameTo(jardir);
+            activity.getFileHandler().deleteFile(undexedDir);
+            backupClassesFolder.renameTo(undexedDir);
             throw e;
         }
-        refreshDexed();
     }
 
     public ModuleConfig fromJson(String json) throws JsonParseException {
@@ -224,11 +243,19 @@ public class ModuleHandler implements Module {
 
     public EAPDisplayableModule loadModule(ModuleConfig config)
             throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-        System.out.println("Loading JSON: " + toJson(config));
         return (EAPDisplayableModule) instantiate(config.getTargetModule());
     }
 
     public Object instantiate(String classname) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+        if (classLoader == null) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(activity, "Refresh all modules before launching a module.", Toast.LENGTH_LONG).show();
+                }
+            });
+            return null;
+        }
         return classLoader.loadClass(classname).newInstance();
     }
 
@@ -237,12 +264,14 @@ public class ModuleHandler implements Module {
         gson = new Gson();
 
         configDir = activity.getDir("config", Context.MODE_PRIVATE);
+        jarDir = activity.getDir("jars", Context.MODE_PRIVATE);
         undexedDir = activity.getDir("undexed", Context.MODE_PRIVATE);
         dexedJar = activity.getFileHandler().generateFile("dexed", "classes.jar");
         optimizedDexDir = activity.getDir("optdex", Context.MODE_PRIVATE);
 
         configDir.mkdirs();
         dexedJar.getParentFile().mkdirs();
+        jarDir.mkdirs();
         undexedDir.mkdirs();
         optimizedDexDir.mkdirs();
 
@@ -296,26 +325,58 @@ public class ModuleHandler implements Module {
 
         clearUntrackedJars();
 
+        unpackageJars();
+
         if (undexedDir.list().length == 0) {
             return;
         }
 
-        ArrayList<String> list = new ArrayList<>();
-        list.add("--keep-classes");
-        list.add("--output=" + dexedJar.getAbsolutePath());
+        String[] args = new String[]{
+                "--keep-classes",
+                "--output=" + dexedJar.getAbsolutePath(),
+                undexedDir.getAbsolutePath()
+        };
 
-        for (File file : undexedDir.listFiles()) {
-            if (file.getAbsolutePath().endsWith(".jar")) {
-                list.add(file.getAbsolutePath());
-            }
-        }
+        Main.main(args);
 
-        Main.main(list.toArray(new String[list.size()]));
-
-        classLoader = new DexClassLoader(activity.getFileHandler().generateFile("dexed", "classes.jar").getAbsolutePath(),
-                activity.getDir("optdex", Context.MODE_PRIVATE).getAbsolutePath(),
+        classLoader = new DexClassLoader(dexedJar.getAbsolutePath(),
+                optimizedDexDir.getAbsolutePath(),
                 null,
                 activity.getClassLoader());
+    }
+
+    private void unpackageJars() throws IOException {
+        String targetDir = undexedDir.getAbsolutePath();
+        JarFile jarFile;
+        Enumeration<JarEntry> jarEntryEnumeration;
+        JarEntry jarEntry;
+        File outputFile;
+        InputStream fromJar;
+        FileOutputStream toFile;
+        for (File jar : jarDir.listFiles()) {
+            jarFile = new JarFile(jar);
+            jarEntryEnumeration = jarFile.entries();
+            while (jarEntryEnumeration.hasMoreElements()) {
+                jarEntry = jarEntryEnumeration.nextElement();
+                if (jarEntry.isDirectory() || !jarEntry.getName().endsWith(".class")) {
+                    continue;
+                }
+                outputFile = new File(targetDir, jarEntry.getName());
+                if (outputFile.exists()) {
+                    outputFile.delete();
+                } else {
+                    outputFile.getParentFile().mkdirs();
+                    System.out.println(jarEntry.getName());
+                }
+                fromJar = jarFile.getInputStream(jarEntry);
+                toFile = new FileOutputStream(outputFile);
+                while (fromJar.available() > 0) {
+                    toFile.write(fromJar.read());
+                }
+                fromJar.close();
+                toFile.close();
+            }
+        }
     }
 
     public ModuleConfig[] getConfigs() {
