@@ -28,6 +28,7 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.content.ContextCompat;
+import android.text.InputType;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.animation.Animation;
@@ -45,6 +46,7 @@ import android.widget.ViewSwitcher;
 import com.google.gson.JsonParseException;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 
 import io.github.trulyfree.easyaspi.lib.EAPActivity;
 import io.github.trulyfree.easyaspi.lib.callback.StagedCallback;
@@ -54,14 +56,21 @@ import io.github.trulyfree.easyaspi.lib.io.FileHandler;
 import io.github.trulyfree.easyaspi.lib.module.ModuleHandler;
 import io.github.trulyfree.easyaspi.lib.module.conf.Config;
 import io.github.trulyfree.easyaspi.lib.module.conf.ModuleConfig;
+import io.github.trulyfree.modular6.action.Action;
+import io.github.trulyfree.modular6.action.handlers.ActionHandler;
+import io.github.trulyfree.modular6.action.handlers.BackgroundGeneralizedActionHandler;
+
+import static android.widget.LinearLayout.LayoutParams;
 
 public class MainActivity extends EAPActivity {
 
+    public static final int ANIMATION_DURATION = 500;
     private DownloadHandler downloadHandler;
     private FileHandler fileHandler;
     private ModuleHandler moduleHandler;
+    private ActionHandler<Action> actionHandler;
 
-    private int currentid = R.id.navigation_home;
+    private int currentID = R.id.navigation_home;
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
@@ -70,8 +79,8 @@ public class MainActivity extends EAPActivity {
         public boolean onNavigationItemSelected(@NonNull MenuItem item) {
             ViewSwitcher viewGroup = (ViewSwitcher) findViewById(R.id.content);
             int id = item.getItemId();
-            if ((id == R.id.navigation_home || id == R.id.navigation_modules) && id != currentid) {
-                currentid = item.getItemId();
+            if ((id == R.id.navigation_home || id == R.id.navigation_modules) && id != currentID) {
+                currentID = item.getItemId();
                 viewGroup.showNext();
                 return true;
             }
@@ -90,6 +99,9 @@ public class MainActivity extends EAPActivity {
         downloadHandler = new DownloadHandler(this);
         fileHandler = new FileHandler(this);
         moduleHandler = new ModuleHandler(this);
+        actionHandler = new BackgroundGeneralizedActionHandler((byte) (Runtime.getRuntime().availableProcessors() * 2));
+        actionHandler.setup();
+        actionHandler.enact();
 
         setContentView(R.layout.activity_main);
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
@@ -101,6 +113,8 @@ public class MainActivity extends EAPActivity {
         viewSwitcher.setInAnimation(in);
         viewSwitcher.setOutAnimation(out);
 
+        resetConfigReturned();
+
         Button getNewModule = (Button) findViewById(R.id.new_module_config_confirm);
         getNewModule.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -108,12 +122,21 @@ public class MainActivity extends EAPActivity {
                 EditText editText = (EditText) findViewById(R.id.new_module_config_configurl);
                 final String url = editText.getText().toString();
                 Toast.makeText(MainActivity.this, "Requested config from: " + url, Toast.LENGTH_SHORT).show();
-                new Thread(new Runnable() {
+                actionHandler.addAction(new Action() {
                     @Override
-                    public void run() {
+                    public boolean enact() {
                         ModuleConfig config;
                         try {
                             config = moduleHandler.getModuleConfig(url);
+                        } catch (MalformedURLException e) {
+                            e.printStackTrace();
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(MainActivity.this, "Invalid URL. :(", Toast.LENGTH_LONG).show();
+                                }
+                            });
+                            return false;
                         } catch (IOException e) {
                             e.printStackTrace();
                             runOnUiThread(new Runnable() {
@@ -122,7 +145,7 @@ public class MainActivity extends EAPActivity {
                                     Toast.makeText(MainActivity.this, "Failed to get module config. :(", Toast.LENGTH_LONG).show();
                                 }
                             });
-                            return;
+                            return false;
                         } catch (JsonParseException e) {
                             e.printStackTrace();
                             runOnUiThread(new Runnable() {
@@ -131,24 +154,19 @@ public class MainActivity extends EAPActivity {
                                     Toast.makeText(MainActivity.this, "Config loaded was invalid. :(", Toast.LENGTH_LONG).show();
                                 }
                             });
-                            return;
+                            return false;
                         }
 
-                        final ModuleConfig finalconfig = config;
-                        final ImageView imageView = (ImageView) findViewById(R.id.block_module_returned);
+                        final ModuleConfig finalConfig = config;
+                        final ImageView configResponseBlock = (ImageView) findViewById(R.id.block_module_returned);
                         final int colorFrom = ContextCompat.getColor(MainActivity.this, R.color.colorFillingTint);
                         final int colorTo = ContextCompat.getColor(MainActivity.this, R.color.colorClear);
                         final ValueAnimator colorAnimation = ValueAnimator.ofObject(new ArgbEvaluator(), colorFrom, colorTo);
-                        colorAnimation.setDuration(100);
+                        colorAnimation.setDuration(ANIMATION_DURATION);
                         colorAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                             @Override
-                            public void onAnimationUpdate(final ValueAnimator animator) {
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        imageView.setBackgroundColor((int) animator.getAnimatedValue());
-                                    }
-                                });
+                            public void onAnimationUpdate(ValueAnimator animator) {
+                                configResponseBlock.setBackgroundColor((int) animator.getAnimatedValue());
                             }
                         });
                         colorAnimation.addListener(new Animator.AnimatorListener() {
@@ -157,107 +175,102 @@ public class MainActivity extends EAPActivity {
                             }
 
                             @Override
-                            public void onAnimationEnd(final Animator animator) {
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        final LinearLayout layout = (LinearLayout) findViewById(R.id.module_returned_config);
-                                        final EditText moduleName = (EditText) findViewById(R.id.module_returned_configname);
-                                        final EditText moduleVersion = (EditText) findViewById(R.id.module_returned_configversion);
-                                        final EditText moduleConfigUrl = (EditText) findViewById(R.id.module_returned_configurl);
-                                        final EditText moduleJarUrl = (EditText) findViewById(R.id.module_returned_jarurl);
-                                        final LinearLayout moduleDependencies = (LinearLayout) findViewById(R.id.module_returned_dependencies);
-                                        try {
-                                            imageView.setVisibility(View.GONE);
-                                            moduleName.setText(finalconfig.getName());
-                                            moduleVersion.setText(finalconfig.getVersion());
-                                            moduleConfigUrl.setText(finalconfig.getConfUrl());
-                                            moduleJarUrl.setText(finalconfig.getJarUrl());
-                                            moduleDependencies.removeAllViewsInLayout();
-                                            for (Config dependency : finalconfig.getDependencies()) {
-                                                LinearLayout child = (LinearLayout) ((LinearLayout) getLayoutInflater().inflate(R.layout.dependency, moduleDependencies)).getChildAt(0);
-                                                EditText name = (EditText) child.getChildAt(0);
-                                                name.setText(dependency.getName());
-                                                EditText jarUrl = (EditText) child.getChildAt(1);
-                                                jarUrl.setText(dependency.getJarUrl());
-                                            }
-                                            layout.setClickable(true);
-                                            final Button validate = (Button) findViewById(R.id.module_returned_validate);
-                                            validate.setOnClickListener(new View.OnClickListener() {
+                            public void onAnimationEnd(Animator animator) {
+                                LinearLayout layout = (LinearLayout) findViewById(R.id.module_returned_config);
+                                EditText moduleName = (EditText) findViewById(R.id.module_returned_configname);
+                                EditText moduleVersion = (EditText) findViewById(R.id.module_returned_configversion);
+                                EditText moduleConfigUrl = (EditText) findViewById(R.id.module_returned_configurl);
+                                EditText moduleJarUrl = (EditText) findViewById(R.id.module_returned_jarurl);
+                                LinearLayout moduleDependencies = (LinearLayout) findViewById(R.id.module_returned_dependencies);
+                                try {
+                                    configResponseBlock.setVisibility(View.GONE);
+                                    moduleName.setText(finalConfig.getName());
+                                    moduleVersion.setText(finalConfig.getVersion());
+                                    moduleConfigUrl.setText(finalConfig.getConfUrl());
+                                    moduleJarUrl.setText(finalConfig.getJarUrl());
+                                    Config[] dependencies = finalConfig.getDependencies();
+                                    for (Config dependency : dependencies) {
+                                        LinearLayout dependencyLayout = new LinearLayout(MainActivity.this);
+                                        dependencyLayout.setLayoutParams(new LayoutParams(
+                                                LayoutParams.MATCH_PARENT,
+                                                LayoutParams.WRAP_CONTENT
+                                        ));
+                                        dependencyLayout.setOrientation(LinearLayout.HORIZONTAL);
+                                        EditText name = new EditText(MainActivity.this);
+                                        EditText jarUrl = new EditText(MainActivity.this);
+                                        EditText[] loopThrough = {name, jarUrl};
+                                        LayoutParams params = new LayoutParams(
+                                                0,
+                                                LayoutParams.WRAP_CONTENT,
+                                                1.0f
+                                        );
+                                        for (EditText item : loopThrough) {
+                                            item.setLayoutParams(params);
+                                            item.setClickable(false);
+                                            item.setInputType(InputType.TYPE_NULL);
+                                            item.setCursorVisible(false);
+                                            item.setFocusable(false);
+                                            item.setFocusableInTouchMode(false);
+                                        }
+                                        name.setText(dependency.getName());
+                                        jarUrl.setText(dependency.getJarUrl());
+                                        dependencyLayout.addView(name);
+                                        dependencyLayout.addView(jarUrl);
+                                        moduleDependencies.addView(dependencyLayout);
+                                    }
+                                    layout.setClickable(true);
+                                    Button validate = (Button) findViewById(R.id.module_returned_validate);
+                                    Button cancel = (Button) findViewById(R.id.module_returned_cancel);
+                                    validate.setOnClickListener(new View.OnClickListener() {
+                                        @Override
+                                        public void onClick(View view) {
+                                            Toast.makeText(MainActivity.this, "Requesting jars...", Toast.LENGTH_SHORT).show();
+                                            actionHandler.addAction(new Action() {
                                                 @Override
-                                                public void onClick(View view) {
-                                                    Toast.makeText(MainActivity.this, "Requesting jars...", Toast.LENGTH_SHORT).show();
-                                                    new Thread(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            final TextView stager = (TextView) findViewById(R.id.new_module_config_downloadstage);
-                                                            final ProgressBar progressBar = (ProgressBar) findViewById(R.id.new_module_config_downloadprogress);
-                                                            try {
-                                                                moduleHandler.getNewModule(makeModuleCallback(stager, progressBar),
-                                                                        finalconfig, null, true);
-                                                            } catch (IOException e) {
-                                                                e.printStackTrace();
-                                                                runOnUiThread(new Runnable() {
-                                                                    @Override
-                                                                    public void run() {
-                                                                        stager.setText("");
-                                                                        progressBar.setProgress(0);
-                                                                    }
-                                                                });
+                                                public boolean enact() {
+                                                    final TextView stager = (TextView) findViewById(R.id.new_module_config_downloadstage);
+                                                    final ProgressBar progressBar = (ProgressBar) findViewById(R.id.new_module_config_downloadprogress);
+                                                    try {
+                                                        moduleHandler.getNewModule(makeModuleCallback(stager, progressBar),
+                                                                finalConfig, null, true);
+                                                    } catch (IOException e) {
+                                                        e.printStackTrace();
+                                                        runOnUiThread(new Runnable() {
+                                                            @Override
+                                                            public void run() {
+                                                                stager.setText("");
+                                                                progressBar.setProgress(0);
                                                             }
-                                                        }
-                                                    }).start();
-                                                }
-                                            });
-                                            final Button cancel = (Button) findViewById(R.id.module_returned_cancel);
-                                            cancel.setOnClickListener(new View.OnClickListener() {
-                                                @Override
-                                                public void onClick(View view) {
-                                                    Toast.makeText(MainActivity.this, "Cancelling request...", Toast.LENGTH_SHORT).show();
-                                                    moduleName.setText(R.string.module_returned_configname);
-                                                    moduleVersion.setText(R.string.module_returned_configversion);
-                                                    moduleConfigUrl.setText(R.string.module_returned_configurl);
-                                                    moduleJarUrl.setText(R.string.module_returned_jarurl);
-                                                    moduleDependencies.removeAllViewsInLayout();
-                                                    validate.setOnClickListener(null);
-                                                    cancel.setOnClickListener(null);
-                                                    final int colorFrom = ContextCompat.getColor(MainActivity.this, R.color.colorClear);
-                                                    final int colorTo = ContextCompat.getColor(MainActivity.this, R.color.colorFillingTint);
-                                                    final ValueAnimator colorAnimation = ValueAnimator.ofObject(new ArgbEvaluator(), colorFrom, colorTo);
-                                                    colorAnimation.setDuration(100);
-                                                    colorAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                                                        @Override
-                                                        public void onAnimationUpdate(final ValueAnimator animator) {
-                                                            runOnUiThread(new Runnable() {
-                                                                @Override
-                                                                public void run() {
-                                                                    imageView.setBackgroundColor((int) animator.getAnimatedValue());
-                                                                }
-                                                            });
-                                                        }
-                                                    });
-                                                    layout.setClickable(false);
-                                                    imageView.setVisibility(View.VISIBLE);
-                                                    colorAnimation.start();
-                                                }
-                                            });
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                            Toast.makeText(MainActivity.this, "Module config invalid. :(", Toast.LENGTH_LONG).show();
-                                            layout.setClickable(false);
-                                            final int colorFrom = ContextCompat.getColor(MainActivity.this, R.color.colorClear);
-                                            final int colorTo = ContextCompat.getColor(MainActivity.this, R.color.colorFillingTint);
-                                            final ValueAnimator colorAnimation = ValueAnimator.ofObject(new ArgbEvaluator(), colorFrom, colorTo);
-                                            colorAnimation.setDuration(500);
-                                            colorAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                                                @Override
-                                                public void onAnimationUpdate(ValueAnimator animator) {
-                                                    imageView.setBackgroundColor((int) animator.getAnimatedValue());
+                                                        });
+                                                        return false;
+                                                    }
+                                                    return true;
                                                 }
                                             });
                                         }
-                                    }
-                                });
+                                    });
+                                    cancel.setOnClickListener(new View.OnClickListener() {
+                                        @Override
+                                        public void onClick(View view) {
+                                            Toast.makeText(MainActivity.this, "Cancelling request...", Toast.LENGTH_SHORT).show();
+                                            resetConfigReturned();
+                                        }
+                                    });
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                    Toast.makeText(MainActivity.this, "Module config invalid. :(", Toast.LENGTH_LONG).show();
+                                    layout.setClickable(false);
+                                    final int colorFrom = ContextCompat.getColor(MainActivity.this, R.color.colorClear);
+                                    final int colorTo = ContextCompat.getColor(MainActivity.this, R.color.colorFillingTint);
+                                    ValueAnimator colorAnimation = ValueAnimator.ofObject(new ArgbEvaluator(), colorFrom, colorTo);
+                                    colorAnimation.setDuration(ANIMATION_DURATION);
+                                    colorAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                                        @Override
+                                        public void onAnimationUpdate(ValueAnimator animator) {
+                                            configResponseBlock.setBackgroundColor((int) animator.getAnimatedValue());
+                                        }
+                                    });
+                                }
                             }
 
                             @Override
@@ -274,8 +287,9 @@ public class MainActivity extends EAPActivity {
                                 colorAnimation.start();
                             }
                         });
+                        return true;
                     }
-                }).start();
+                });
             }
         });
 
@@ -288,15 +302,15 @@ public class MainActivity extends EAPActivity {
         LinearLayout dashboard = (LinearLayout) findViewById(R.id.dashboard);
         dashboard.removeAllViewsInLayout();
         if (moduleHandler.getConfigs().length != 0) {
-            LinearLayout moduleList = (LinearLayout) ((LinearLayout) getLayoutInflater().inflate(R.layout.modulelist, dashboard)).getChildAt(0);
+            final LinearLayout moduleList = (LinearLayout) ((LinearLayout) getLayoutInflater().inflate(R.layout.modulelist, dashboard)).getChildAt(0);
             Button refreshAll = (Button) findViewById(R.id.refresh_all);
             refreshAll.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     Toast.makeText(MainActivity.this, "Refreshing jars...", Toast.LENGTH_SHORT).show();
-                    new Thread(new Runnable() {
+                    actionHandler.addAction(new Action() {
                         @Override
-                        public void run() {
+                        public boolean enact() {
                             final TextView stager = (TextView) findViewById(R.id.refresh_download_stage);
                             final ProgressBar progressBar = (ProgressBar) findViewById(R.id.refresh_bar);
                             try {
@@ -310,52 +324,94 @@ public class MainActivity extends EAPActivity {
                                         progressBar.setProgress(0);
                                     }
                                 });
+                                return false;
                             }
+                            return true;
                         }
-                    }).start();
+                    });
                 }
             });
             LinearLayout scrolledModuleList = (LinearLayout) ((ScrollView) moduleList.getChildAt(3)).getChildAt(0);
             for (int i = 0; i < moduleHandler.getConfigs().length; i++) {
                 final int intermediary = i;
-                LinearLayout layout = (LinearLayout) ((LinearLayout) getLayoutInflater().inflate(R.layout.module, scrolledModuleList)).getChildAt(i);
-                EditText moduleName = (EditText) layout.getChildAt(0);
-                moduleName.setText(moduleHandler.getConfigs()[i].getName());
-                Button launcher = (Button) layout.getChildAt(1);
-                launcher.setOnClickListener(new View.OnClickListener() {
+                final LinearLayout layout = (LinearLayout) ((LinearLayout) getLayoutInflater().inflate(R.layout.module, scrolledModuleList)).getChildAt(i);
+                actionHandler.addAction(new Action() {
                     @Override
-                    public void onClick(View view) {
-                        Intent myIntent = new Intent(MainActivity.this, EAPDisplay.class);
-                        myIntent.putExtra("targetModule", moduleHandler.toJson(moduleHandler.getConfigs()[intermediary]));
-                        MainActivity.this.startActivityForResult(myIntent, intermediary);
-                    }
-                });
-                Button delete = (Button) layout.getChildAt(2);
-                delete.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        final ModuleConfig config = moduleHandler.getConfigs()[intermediary];
-                        boolean success = false;
-                        try {
-                            success = moduleHandler.remove(null, config);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        final String toast = "Deletion of " + config.getName() + " was " +
-                                ((success) ? "successful." : "unsuccessful.");
-                        runOnUiThread(new Runnable() {
+                    public boolean enact() {
+                        final Button launcher = (Button) layout.getChildAt(1);
+                        final Button delete = (Button) layout.getChildAt(2);
+                        launcher.setOnClickListener(new View.OnClickListener() {
                             @Override
-                            public void run() {
-                                Toast.makeText(MainActivity.this, toast, Toast.LENGTH_SHORT).show();
-                                refreshFilling();
+                            public void onClick(View view) {
+                                Intent myIntent = new Intent(MainActivity.this, EAPDisplay.class);
+                                myIntent.putExtra("targetModule", moduleHandler.toJson(moduleHandler.getConfigs()[intermediary]));
+                                MainActivity.this.startActivityForResult(myIntent, intermediary);
                             }
                         });
+                        delete.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                ModuleConfig config = moduleHandler.getConfigs()[intermediary];
+                                boolean success = false;
+                                try {
+                                    success = moduleHandler.remove(null, config);
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                                final String toast = "Deletion of " + config.getName() + " was " +
+                                        ((success) ? "successful." : "unsuccessful.");
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Toast.makeText(MainActivity.this, toast, Toast.LENGTH_SHORT).show();
+                                        refreshFilling();
+                                    }
+                                });
+                            }
+                        });
+                        launcher.setClickable(true);
+                        delete.setClickable(true);
+                        return true;
                     }
                 });
+                EditText moduleName = (EditText) layout.getChildAt(0);
+                moduleName.setText(moduleHandler.getConfigs()[intermediary].getName());
             }
         } else {
             getLayoutInflater().inflate(R.layout.no_module_modulelist, dashboard);
         }
+    }
+
+    private void resetConfigReturned() {
+        final ImageView configResponseBlock = (ImageView) findViewById(R.id.block_module_returned);
+        LinearLayout layout = (LinearLayout) findViewById(R.id.module_returned_config);
+        EditText moduleName = (EditText) findViewById(R.id.module_returned_configname);
+        EditText moduleVersion = (EditText) findViewById(R.id.module_returned_configversion);
+        EditText moduleConfigUrl = (EditText) findViewById(R.id.module_returned_configurl);
+        EditText moduleJarUrl = (EditText) findViewById(R.id.module_returned_jarurl);
+        LinearLayout moduleDependencies = (LinearLayout) findViewById(R.id.module_returned_dependencies);
+        Button validate = (Button) findViewById(R.id.module_returned_validate);
+        Button cancel = (Button) findViewById(R.id.module_returned_cancel);
+        moduleName.setText(R.string.module_returned_configname);
+        moduleVersion.setText(R.string.module_returned_configversion);
+        moduleConfigUrl.setText(R.string.module_returned_configurl);
+        moduleJarUrl.setText(R.string.module_returned_jarurl);
+        moduleDependencies.removeAllViewsInLayout();
+        validate.setOnClickListener(null);
+        cancel.setOnClickListener(null);
+        final int colorFrom = ContextCompat.getColor(MainActivity.this, R.color.colorClear);
+        final int colorTo = ContextCompat.getColor(MainActivity.this, R.color.colorFillingTint);
+        ValueAnimator colorAnimation = ValueAnimator.ofObject(new ArgbEvaluator(), colorFrom, colorTo);
+        colorAnimation.setDuration(ANIMATION_DURATION);
+        colorAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animator) {
+                configResponseBlock.setBackgroundColor((int) animator.getAnimatedValue());
+            }
+        });
+        layout.setClickable(false);
+        configResponseBlock.setVisibility(View.VISIBLE);
+        colorAnimation.start();
     }
 
     @Override
@@ -433,5 +489,10 @@ public class MainActivity extends EAPActivity {
 
     public ModuleHandler getModuleHandler() {
         return moduleHandler;
+    }
+
+    @Override
+    public ActionHandler<Action> getActionHandler() {
+        return actionHandler;
     }
 }

@@ -30,6 +30,9 @@ import io.github.trulyfree.easyaspi.lib.dl.DownloadHandler;
 import io.github.trulyfree.easyaspi.lib.io.FileHandler;
 import io.github.trulyfree.easyaspi.lib.module.ModuleHandler;
 import io.github.trulyfree.easyaspi.lib.module.conf.ModuleConfig;
+import io.github.trulyfree.modular6.action.Action;
+import io.github.trulyfree.modular6.action.handlers.ActionHandler;
+import io.github.trulyfree.modular6.action.handlers.BackgroundGeneralizedActionHandler;
 import io.github.trulyfree.modular6.display.Display;
 import io.github.trulyfree.modular6.display.DisplayableModule;
 import io.github.trulyfree.modular6.display.except.DisplayableException;
@@ -39,6 +42,7 @@ public final class EAPDisplay extends EAPActivity implements Display<EAPDisplaya
     private DownloadHandler downloadHandler;
     private FileHandler fileHandler;
     private ModuleHandler moduleHandler;
+    private ActionHandler<Action> actionHandler;
 
     private EAPDisplayableModule currentModule;
 
@@ -98,7 +102,10 @@ public final class EAPDisplay extends EAPActivity implements Display<EAPDisplaya
         this.moduleHandler = new ModuleHandler(this);
         this.fileHandler = new FileHandler(this);
         this.downloadHandler = new DownloadHandler(this);
+        this.actionHandler = new BackgroundGeneralizedActionHandler((byte) (Runtime.getRuntime().availableProcessors() * 2));
         moduleHandler.setup();
+        actionHandler.setup();
+        actionHandler.enact();
         try {
             String config = extras.getString("targetModule");
             System.out.println(config);
@@ -155,23 +162,16 @@ public final class EAPDisplay extends EAPActivity implements Display<EAPDisplaya
         return downloadHandler;
     }
 
-    public void setDownloadHandler(DownloadHandler downloadHandler) {
-        this.downloadHandler = downloadHandler;
-    }
-
     public FileHandler getFileHandler() {
         return fileHandler;
-    }
-
-    public void setFileHandler(FileHandler fileHandler) {
-        this.fileHandler = fileHandler;
     }
 
     public ModuleHandler getModuleHandler() {
         return moduleHandler;
     }
 
-    public void setModuleHandler(ModuleHandler moduleHandler) {
-        this.moduleHandler = moduleHandler;
+    @Override
+    public ActionHandler<Action> getActionHandler() {
+        return actionHandler;
     }
 }

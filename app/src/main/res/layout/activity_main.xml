@@ -188,7 +188,8 @@
 
                     <ScrollView
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent">
+                        android:layout_height="match_parent"
+                        android:fadeScrollbars="false" >
 
                         <LinearLayout
                             android:id="@+id/module_returned_dependencies"
@@ -202,8 +203,7 @@
                 <ImageView
                     android:id="@+id/block_module_returned"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    app:srcCompat="@drawable/newmodule_fade" />
+                    android:layout_height="match_parent" />
             </RelativeLayout>
         </LinearLayout>
 

@@ -29,7 +29,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
 
 import io.github.trulyfree.easyaspi.lib.EAPActivity;
 import io.github.trulyfree.easyaspi.lib.callback.Callback;
@@ -50,7 +49,7 @@ public class DownloadHandler {
                            @NonNull String urlString) throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         download(output, callback, urlString);
-        return new String(output.toByteArray(), StandardCharsets.UTF_8);
+        return new String(output.toByteArray());
     }
 
     public void download(@NonNull OutputStream output,

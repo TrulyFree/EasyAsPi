@@ -25,9 +25,12 @@ import android.support.v7.app.AppCompatActivity;
 import io.github.trulyfree.easyaspi.lib.dl.DownloadHandler;
 import io.github.trulyfree.easyaspi.lib.io.FileHandler;
 import io.github.trulyfree.easyaspi.lib.module.ModuleHandler;
+import io.github.trulyfree.modular6.action.Action;
+import io.github.trulyfree.modular6.action.handlers.ActionHandler;
 
 public abstract class EAPActivity extends AppCompatActivity {
     public abstract DownloadHandler getDownloadHandler();
     public abstract FileHandler getFileHandler();
     public abstract ModuleHandler getModuleHandler();
+    public abstract ActionHandler<Action> getActionHandler();
 }

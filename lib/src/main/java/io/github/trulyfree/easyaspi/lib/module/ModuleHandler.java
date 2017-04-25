@@ -70,6 +70,10 @@ public class ModuleHandler implements Module {
         DownloadHandler downloadHandler = activity.getDownloadHandler();
         FileHandler fileHandler = activity.getFileHandler();
 
+        if (alreadyDownloaded == null) {
+            alreadyDownloaded = new Stack<>();
+        }
+
         Stack<File> writtenFiles = new Stack<>();
 
         try {
@@ -159,7 +163,7 @@ public class ModuleHandler implements Module {
 
     private void clearUntrackedJars() {
         FileHandler fileHandler = activity.getFileHandler();
-        ArrayList<String> jarStrings = new ArrayList<>();
+        ArrayList<String> jarStrings = new ArrayList<String>();
         for (String file : jarDir.list()) {
             int dir = file.lastIndexOf(File.separatorChar);
             if (dir != -1) {
@@ -196,7 +200,7 @@ public class ModuleHandler implements Module {
             if (callback != null) {
                 callback.setStages(stages);
             }
-            Stack<String> alreadyDownloaded = new Stack<>();
+            Stack<String> alreadyDownloaded = new Stack<String>();
             for (ModuleConfig config : configs) {
                 if (callback != null) {
                     callback.onStart();
@@ -233,7 +237,7 @@ public class ModuleHandler implements Module {
                 }
             }
             refreshDexed();
-        } catch (Exception e) {
+        } catch (IOException | JsonParseException e) {
             e.printStackTrace();
             activity.getFileHandler().deleteFile(undexedDir);
             backupClassesFolder.renameTo(undexedDir);
@@ -318,11 +322,24 @@ public class ModuleHandler implements Module {
 
     private void refreshConfigs() throws IOException {
         FileHandler fileHandler = activity.getFileHandler();
-        File[] configFiles = configDir.listFiles();
-        configs = new ModuleConfig[configFiles.length];
+        final File[] configFiles = configDir.listFiles();
+        ArrayList<ModuleConfig> configList = new ArrayList<>(configFiles.length);
+        ModuleConfig midconfig;
         for (int i = 0; i < configFiles.length; i++) {
-            configs[i] = gson.fromJson(fileHandler.readFile(null, configFiles[i]), ModuleConfig.class);
+            final int intermediary = i;
+            midconfig = gson.fromJson(fileHandler.readFile(null, configFiles[i]), ModuleConfig.class);
+            if (midconfig == null) {
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(activity, "Failed to load " + configFiles[intermediary].getName(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } else {
+                configList.add(midconfig);
+            }
         }
+        configs = configList.toArray(new ModuleConfig[configList.size()]);
     }
 
     private void refreshDexed() throws IOException {
