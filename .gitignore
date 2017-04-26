@@ -1,5 +1,4 @@
 *.iml
-.gradle
 /*
 /*/
 !/.idea/
@@ -12,6 +11,6 @@
 !/LICENSE
 !/build.gradle
 !/gradle.properties
-!/settings.gradle
 libs/
 .externalNativeBuild
+.gradle
