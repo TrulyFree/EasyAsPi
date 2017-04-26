@@ -24,4 +24,4 @@
  * See README.md on details of how to build your own projects.
  */
 
-include ':app', ':lib', ':test'
+include ':app', ':lib'

@@ -182,6 +182,7 @@ public class MainActivity extends EAPActivity {
                                 EditText moduleConfigUrl = (EditText) findViewById(R.id.module_returned_configurl);
                                 EditText moduleJarUrl = (EditText) findViewById(R.id.module_returned_jarurl);
                                 LinearLayout moduleDependencies = (LinearLayout) findViewById(R.id.module_returned_dependencies);
+                                moduleDependencies.removeAllViewsInLayout();
                                 try {
                                     configResponseBlock.setVisibility(View.GONE);
                                     moduleName.setText(finalConfig.getName());
