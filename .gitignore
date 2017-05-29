@@ -14,3 +14,4 @@
 libs/
 .externalNativeBuild
 .gradle
+.idea/vcs.xml
