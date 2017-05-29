@@ -18,17 +18,14 @@
  * Raspberry Pi is a trademark of the Raspberry Pi Foundation.
  */
 
-package io.github.trulyfree.easyaspi.lib.disp;
+package io.github.trulyfree.easyaspi.lib.module;
 
-import android.view.View;
-import android.view.ViewGroup;
+/**
+ * Created by vtcakavsmoace on 5/22/17.
+ */
 
-import io.github.trulyfree.modular6.display.Displayable;
-
-public interface EAPDisplayable extends Displayable {
-
-    public View getRootView();
-
-    public ViewGroup.LayoutParams getLayoutParams();
-
+public interface Module {
+    public boolean setup();
+    public boolean isReady();
+    public boolean destroy();
 }

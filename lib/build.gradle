@@ -21,17 +21,14 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.0"
-
+    compileSdkVersion rootProject.targetSdkVersion
+    buildToolsVersion rootProject.buildToolsVersion
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 25
-        versionCode 1
-        versionName "1.0"
-
+        minSdkVersion rootProject.minSdkVersion
+        targetSdkVersion rootProject.targetSdkVersion
+        versionCode rootProject.versionCode
+        versionName rootProject.versionName
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-
     }
     buildTypes {
         release {
@@ -50,22 +47,23 @@ dependencies {
     })
     compile group: 'com.android.support', name: 'appcompat-v7', version: '25.3.1'
     compile group: 'com.android.support', name: 'design', version: '25.3.1'
-    compile group: 'com.github.TrulyFree', name: 'Modular6', version: 'v0.1.3-beta'
     compile group: 'com.google.code.gson', name: 'gson', version: '2.8.0'
     testCompile group: 'junit', name: 'junit', version: '4.12'
     compile group: 'org.jetbrains', name: 'annotations-java5', version: '15.0'
     compile group: 'com.google.android.tools', name: 'dx', version: '1.7'
 }
 
+def outJar = 'EasyAsPi-' + rootProject.versionName + '.jar'
+
 task deleteJar(type: Delete) {
-    delete 'libs/EasyAsPi Module Library.jar'
+    delete 'libs/jars/' + outJar
 }
 
 task createJar(type: Copy) {
     from('build/intermediates/bundles/debug/')
     into('libs/jars/')
     include('classes.jar')
-    rename('classes.jar', 'EasyAsPi.jar')
+    rename('classes.jar', outJar)
 }
 
 createJar.dependsOn(deleteJar, build)

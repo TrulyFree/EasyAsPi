@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   ~ EasyAsPi: A phone-based interface for the Raspberry Pi.
   ~ Copyright (C) 2017  vtcakavsmoace
   ~
@@ -189,7 +188,7 @@
                     <ScrollView
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:fadeScrollbars="false" >
+                        android:fadeScrollbars="false">
 
                         <LinearLayout
                             android:id="@+id/module_returned_dependencies"

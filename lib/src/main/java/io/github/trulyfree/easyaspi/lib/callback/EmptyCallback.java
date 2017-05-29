@@ -18,21 +18,21 @@
  * Raspberry Pi is a trademark of the Raspberry Pi Foundation.
  */
 
-package io.github.trulyfree.easyaspi.lib.disp;
+package io.github.trulyfree.easyaspi.lib.callback;
 
-import android.view.View;
-import android.view.ViewGroup;
+public class EmptyCallback implements StagedCallback {
 
-import java.util.concurrent.ExecutorService;
+    public static final EmptyCallback EMPTY = new EmptyCallback();
 
-import io.github.trulyfree.easyaspi.lib.module.Module;
+    private EmptyCallback() {}
 
-public interface EAPDisplayableModule extends Module {
-    public void setActivity(EAPDisplay activity);
+    @Override
+    public void onStart() {}
+    @Override
+    public void onProgress(int current) {}
+    @Override
+    public void onFinish() {}
+    @Override
+    public void setStages(String[] names) {}
 
-    public void setExecutorService(ExecutorService executorService);
-
-    public View getRootView();
-
-    public ViewGroup.LayoutParams getLayoutParams();
 }

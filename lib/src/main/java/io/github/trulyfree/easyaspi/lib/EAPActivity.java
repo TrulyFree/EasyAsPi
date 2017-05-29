@@ -20,17 +20,27 @@
 
 package io.github.trulyfree.easyaspi.lib;
 
-import android.support.v7.app.AppCompatActivity;
+import java.io.File;
+import java.util.concurrent.ExecutorService;
 
+import io.github.trulyfree.easyaspi.lib.disp.EAPDisplayableModule;
 import io.github.trulyfree.easyaspi.lib.dl.DownloadHandler;
 import io.github.trulyfree.easyaspi.lib.io.FileHandler;
+import io.github.trulyfree.easyaspi.lib.module.Module;
 import io.github.trulyfree.easyaspi.lib.module.ModuleHandler;
-import io.github.trulyfree.modular6.action.Action;
-import io.github.trulyfree.modular6.action.handlers.ActionHandler;
 
-public abstract class EAPActivity extends AppCompatActivity {
-    public abstract DownloadHandler getDownloadHandler();
-    public abstract FileHandler getFileHandler();
-    public abstract ModuleHandler getModuleHandler();
-    public abstract ActionHandler<Action> getActionHandler();
+public interface EAPActivity extends Module {
+    public DownloadHandler getDownloadHandler();
+    public FileHandler getFileHandler();
+    public ModuleHandler getModuleHandler();
+    public ExecutorService getExecutorService();
+    public EAPDisplayableModule getDisplayableModule();
+    public boolean setDisplayableModule(EAPDisplayableModule displayableModule);
+    // For FileHandler support.
+    public File getDir(String appdir, int modePrivate);
+    // For ModuleHandler support.
+    public ClassLoader getClassLoader();
+    public void runOnUiThread(Runnable runnable);
+    // For ToastCreation support.
+    public void displayToUser(String text, int time);
 }

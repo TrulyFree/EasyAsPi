@@ -28,6 +28,7 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.text.InputType;
 import android.view.MenuItem;
 import android.view.View;
@@ -47,28 +48,29 @@ import com.google.gson.JsonParseException;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import io.github.trulyfree.easyaspi.lib.EAPActivity;
 import io.github.trulyfree.easyaspi.lib.callback.StagedCallback;
 import io.github.trulyfree.easyaspi.lib.disp.EAPDisplay;
+import io.github.trulyfree.easyaspi.lib.disp.EAPDisplayableModule;
 import io.github.trulyfree.easyaspi.lib.dl.DownloadHandler;
 import io.github.trulyfree.easyaspi.lib.io.FileHandler;
 import io.github.trulyfree.easyaspi.lib.module.ModuleHandler;
 import io.github.trulyfree.easyaspi.lib.module.conf.Config;
 import io.github.trulyfree.easyaspi.lib.module.conf.ModuleConfig;
-import io.github.trulyfree.modular6.action.Action;
-import io.github.trulyfree.modular6.action.handlers.ActionHandler;
-import io.github.trulyfree.modular6.action.handlers.BackgroundGeneralizedActionHandler;
 
 import static android.widget.LinearLayout.LayoutParams;
 
-public class MainActivity extends EAPActivity {
+public class MainActivity extends AppCompatActivity implements EAPActivity {
 
     public static final int ANIMATION_DURATION = 500;
     private DownloadHandler downloadHandler;
     private FileHandler fileHandler;
     private ModuleHandler moduleHandler;
-    private ActionHandler<Action> actionHandler;
+    private ExecutorService executorService;
 
     private int currentID = R.id.navigation_home;
 
@@ -99,9 +101,7 @@ public class MainActivity extends EAPActivity {
         downloadHandler = new DownloadHandler(this);
         fileHandler = new FileHandler(this);
         moduleHandler = new ModuleHandler(this);
-        actionHandler = new BackgroundGeneralizedActionHandler((byte) (Runtime.getRuntime().availableProcessors() * 2));
-        actionHandler.setup();
-        actionHandler.enact();
+        executorService = Executors.newCachedThreadPool();
 
         setContentView(R.layout.activity_main);
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
@@ -122,9 +122,9 @@ public class MainActivity extends EAPActivity {
                 EditText editText = (EditText) findViewById(R.id.new_module_config_configurl);
                 final String url = editText.getText().toString();
                 Toast.makeText(MainActivity.this, "Requested config from: " + url, Toast.LENGTH_SHORT).show();
-                actionHandler.addAction(new Action() {
+                executorService.submit(new Callable<Boolean>() {
                     @Override
-                    public boolean enact() {
+                    public Boolean call() {
                         ModuleConfig config;
                         try {
                             config = moduleHandler.getModuleConfig(url);
@@ -226,9 +226,9 @@ public class MainActivity extends EAPActivity {
                                         @Override
                                         public void onClick(View view) {
                                             Toast.makeText(MainActivity.this, "Requesting jars...", Toast.LENGTH_SHORT).show();
-                                            actionHandler.addAction(new Action() {
+                                            executorService.submit(new Callable<Boolean>() {
                                                 @Override
-                                                public boolean enact() {
+                                                public Boolean call() {
                                                     final TextView stager = (TextView) findViewById(R.id.new_module_config_downloadstage);
                                                     final ProgressBar progressBar = (ProgressBar) findViewById(R.id.new_module_config_downloadprogress);
                                                     try {
@@ -299,6 +299,16 @@ public class MainActivity extends EAPActivity {
         return true;
     }
 
+    @Override
+    public boolean isReady() {
+        return false;
+    }
+
+    @Override
+    public boolean destroy() {
+        return false;
+    }
+
     private void refreshFilling() {
         LinearLayout dashboard = (LinearLayout) findViewById(R.id.dashboard);
         dashboard.removeAllViewsInLayout();
@@ -309,9 +319,9 @@ public class MainActivity extends EAPActivity {
                 @Override
                 public void onClick(View view) {
                     Toast.makeText(MainActivity.this, "Refreshing jars...", Toast.LENGTH_SHORT).show();
-                    actionHandler.addAction(new Action() {
+                    executorService.submit(new Callable<Boolean>() {
                         @Override
-                        public boolean enact() {
+                        public Boolean call() {
                             final TextView stager = (TextView) findViewById(R.id.refresh_download_stage);
                             final ProgressBar progressBar = (ProgressBar) findViewById(R.id.refresh_bar);
                             try {
@@ -336,9 +346,9 @@ public class MainActivity extends EAPActivity {
             for (int i = 0; i < moduleHandler.getConfigs().length; i++) {
                 final int intermediary = i;
                 final LinearLayout layout = (LinearLayout) ((LinearLayout) getLayoutInflater().inflate(R.layout.module, scrolledModuleList)).getChildAt(i);
-                actionHandler.addAction(new Action() {
+                executorService.submit(new Callable<Boolean>() {
                     @Override
-                    public boolean enact() {
+                    public Boolean call() {
                         final Button launcher = (Button) layout.getChildAt(1);
                         final Button delete = (Button) layout.getChildAt(2);
                         launcher.setOnClickListener(new View.OnClickListener() {
@@ -493,7 +503,22 @@ public class MainActivity extends EAPActivity {
     }
 
     @Override
-    public ActionHandler<Action> getActionHandler() {
-        return actionHandler;
+    public ExecutorService getExecutorService() {
+        return executorService;
+    }
+
+    @Override
+    public EAPDisplayableModule getDisplayableModule() {
+        return null;
+    }
+
+    @Override
+    public boolean setDisplayableModule(EAPDisplayableModule displayableModule) {
+        return false;
+    }
+
+    @Override
+    public void displayToUser(String text, int time) {
+        Toast.makeText(this, text, time).show();
     }
 }

@@ -40,13 +40,13 @@ import java.util.jar.JarFile;
 
 import dalvik.system.DexClassLoader;
 import io.github.trulyfree.easyaspi.lib.EAPActivity;
+import io.github.trulyfree.easyaspi.lib.callback.EmptyCallback;
 import io.github.trulyfree.easyaspi.lib.callback.StagedCallback;
 import io.github.trulyfree.easyaspi.lib.disp.EAPDisplayableModule;
 import io.github.trulyfree.easyaspi.lib.dl.DownloadHandler;
 import io.github.trulyfree.easyaspi.lib.io.FileHandler;
 import io.github.trulyfree.easyaspi.lib.module.conf.Config;
 import io.github.trulyfree.easyaspi.lib.module.conf.ModuleConfig;
-import io.github.trulyfree.modular6.module.Module;
 
 public class ModuleHandler implements Module {
     private final EAPActivity activity;
@@ -84,23 +84,25 @@ public class ModuleHandler implements Module {
             }
             fileHandler.writeFile(stringConfig, null, writtenFiles.peek());
 
-            if (callback != null) {
-                String[] stages = new String[config.getDependencies().length + 1];
-
-                stages[0] = "Getting main jar (" + config.getName() + ")...";
-                StringBuilder stringBuilder;
-                for (int i = 1; i < stages.length; i++) {
-                    stringBuilder = new StringBuilder("Getting dependency ");
-                    stringBuilder.append(config.getDependencies()[i - 1].getName());
-                    stringBuilder.append(" (");
-                    stringBuilder.append(i);
-                    stringBuilder.append("/");
-                    stringBuilder.append(stages.length - 1);
-                    stringBuilder.append(")...");
-                    stages[i] = stringBuilder.toString();
-                }
-                callback.setStages(stages);
+            if (callback == null) {
+                callback = EmptyCallback.EMPTY;
             }
+
+            String[] stages = new String[config.getDependencies().length + 1];
+
+            stages[0] = "Getting main jar (" + config.getName() + ")...";
+            StringBuilder stringBuilder;
+            for (int i = 1; i < stages.length; i++) {
+                stringBuilder = new StringBuilder("Getting dependency ");
+                stringBuilder.append(config.getDependencies()[i - 1].getName());
+                stringBuilder.append(" (");
+                stringBuilder.append(i);
+                stringBuilder.append("/");
+                stringBuilder.append(stages.length - 1);
+                stringBuilder.append(")...");
+                stages[i] = stringBuilder.toString();
+            }
+            callback.setStages(stages);
 
             writtenFiles.push(fileHandler.generateFile("jars", config.getName() + ".jar"));
             if (writtenFiles.peek().exists()) {
@@ -112,7 +114,7 @@ public class ModuleHandler implements Module {
                         false,
                         writtenFiles.peek());
                 alreadyDownloaded.push(config.getJarUrl());
-            } else if (callback != null) {
+            } else {
                 callback.onStart();
                 callback.onProgress(100);
                 callback.onFinish();
@@ -130,7 +132,7 @@ public class ModuleHandler implements Module {
                             false,
                             writtenFiles.peek());
                     alreadyDownloaded.push(dependency.getJarUrl());
-                } else if (callback != null) {
+                } else {
                     callback.onStart();
                     callback.onProgress(100);
                     callback.onFinish();
@@ -163,7 +165,7 @@ public class ModuleHandler implements Module {
 
     private void clearUntrackedJars() {
         FileHandler fileHandler = activity.getFileHandler();
-        ArrayList<String> jarStrings = new ArrayList<String>();
+        ArrayList<String> jarStrings = new ArrayList<>();
         for (String file : jarDir.list()) {
             int dir = file.lastIndexOf(File.separatorChar);
             if (dir != -1) {
@@ -183,7 +185,7 @@ public class ModuleHandler implements Module {
         }
     }
 
-    public void refreshAll(final StagedCallback callback) throws IOException, JsonParseException {
+    public void refreshAll(StagedCallback callback) throws IOException, JsonParseException {
         refreshConfigs();
         File undexedDir = activity.getDir("undexed", Context.MODE_PRIVATE);
         File backupClassesFolder = activity.getDir("undexed_backup", Context.MODE_PRIVATE);
@@ -197,14 +199,14 @@ public class ModuleHandler implements Module {
             for (int i = 0; i < stages.length; i++) {
                 stages[i] = "Getting module " + configs[i].getName();
             }
-            if (callback != null) {
-                callback.setStages(stages);
+            if (callback == null) {
+                callback = EmptyCallback.EMPTY;
             }
-            Stack<String> alreadyDownloaded = new Stack<String>();
+            callback.setStages(stages);
+            Stack<String> alreadyDownloaded = new Stack<>();
+            final StagedCallback intermediary = callback;
             for (ModuleConfig config : configs) {
-                if (callback != null) {
-                    callback.onStart();
-                }
+                callback.onStart();
                 getNewModule(new StagedCallback() {
                     int stageCount = 1, current = 0;
 
@@ -222,9 +224,7 @@ public class ModuleHandler implements Module {
                     public void onProgress(int current) {
                         int numerator = this.current * 100 + current;
                         int denominator = this.stageCount;
-                        if (callback != null) {
-                            callback.onProgress(numerator / denominator);
-                        }
+                        intermediary.onProgress(numerator / denominator);
                     }
 
                     @Override
@@ -232,9 +232,7 @@ public class ModuleHandler implements Module {
                         current++;
                     }
                 }, config, alreadyDownloaded, false);
-                if (callback != null) {
-                    callback.onFinish();
-                }
+                callback.onFinish();
             }
             refreshDexed();
         } catch (IOException | JsonParseException e) {
@@ -263,7 +261,7 @@ public class ModuleHandler implements Module {
             activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(activity, "Refresh all modules before launching a module.", Toast.LENGTH_LONG).show();
+                    activity.displayToUser("Refresh all modules before launching a module.", Toast.LENGTH_LONG);
                 }
             });
             return null;
@@ -332,7 +330,7 @@ public class ModuleHandler implements Module {
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(activity, "Failed to load " + configFiles[intermediary].getName(), Toast.LENGTH_SHORT).show();
+                        activity.displayToUser("Failed to load " + configFiles[intermediary].getName(), Toast.LENGTH_SHORT);
                     }
                 });
             } else {
@@ -407,4 +405,13 @@ public class ModuleHandler implements Module {
     public ModuleConfig[] getConfigs() {
         return configs;
     }
+
+    public Gson getGson() {
+        return gson;
+    }
+
+    public EAPActivity getActivity() {
+        return activity;
+    }
+
 }

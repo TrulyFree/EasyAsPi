@@ -32,6 +32,7 @@ import java.net.URLConnection;
 
 import io.github.trulyfree.easyaspi.lib.EAPActivity;
 import io.github.trulyfree.easyaspi.lib.callback.Callback;
+import io.github.trulyfree.easyaspi.lib.callback.EmptyCallback;
 
 public class DownloadHandler {
 
@@ -63,9 +64,11 @@ public class DownloadHandler {
 
         InputStream input = new BufferedInputStream(url.openStream());
 
-        if (callback != null) {
-            callback.onStart();
+        if (callback == null) {
+            callback = EmptyCallback.EMPTY;
         }
+
+        callback.onStart();
 
         byte data[] = new byte[BUFFER_SIZE];
         int total = urlConnection.getContentLength(),
@@ -74,9 +77,7 @@ public class DownloadHandler {
 
         while ((count = input.read(data)) != -1) {
             current += count;
-            if (callback != null) {
-                callback.onProgress((100 * current) / total);
-            }
+            callback.onProgress((100 * current) / total);
             output.write(data, 0, count);
         }
 
@@ -84,9 +85,7 @@ public class DownloadHandler {
         output.close();
         input.close();
 
-        if (callback != null) {
-            callback.onFinish();
-        }
+        callback.onFinish();
     }
 
     public InputStream getDownloadStream(@NonNull String urlString) throws IOException {
@@ -103,4 +102,7 @@ public class DownloadHandler {
         System.out.println("Downloaded from " + urlString);
     }
 
+    public EAPActivity getActivity() {
+        return activity;
+    }
 }

@@ -33,9 +33,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import io.github.trulyfree.easyaspi.lib.EAPActivity;
 import io.github.trulyfree.easyaspi.lib.callback.Callback;
+import io.github.trulyfree.easyaspi.lib.callback.EmptyCallback;
 
 public class FileHandler {
 
@@ -66,16 +68,16 @@ public class FileHandler {
 
         PrintWriter out = new PrintWriter(target);
 
-        if (callback != null) {
-            callback.onStart();
+        if (callback == null) {
+            callback = EmptyCallback.EMPTY;
         }
+
+        callback.onStart();
 
         out.write(content);
         out.close();
 
-        if (callback != null) {
-            callback.onFinish();
-        }
+        callback.onFinish();
     }
 
     public void writeFile(@NonNull InputStream input,
@@ -101,15 +103,15 @@ public class FileHandler {
         byte data[] = new byte[BUFFER_SIZE];
         int current = 0, count;
 
-        if (callback != null) {
-            callback.onStart();
+        if (callback == null) {
+            callback = EmptyCallback.EMPTY;
         }
+
+        callback.onStart();
 
         while ((count = input.read(data)) != -1) {
             current += count;
-            if (callback != null) {
-                callback.onProgress(current);
-            }
+            callback.onProgress(current);
             output.write(data, 0, count);
         }
 
@@ -117,9 +119,7 @@ public class FileHandler {
         output.close();
         input.close();
 
-        if (callback != null) {
-            callback.onFinish();
-        }
+        callback.onFinish();
     }
 
     public void readFile(@NonNull OutputStream output,
@@ -138,9 +138,11 @@ public class FileHandler {
                          @NonNull File target) throws IOException {
         InputStream input = new BufferedInputStream(new FileInputStream(target));
 
-        if (callback != null) {
-            callback.onStart();
+        if (callback == null) {
+            callback = EmptyCallback.EMPTY;
         }
+
+        callback.onStart();
 
         byte data[] = new byte[BUFFER_SIZE];
         long total = target.length();
@@ -149,9 +151,7 @@ public class FileHandler {
 
         while ((count = input.read(data)) != -1) {
             current += count;
-            if (callback != null) {
-                callback.onProgress((int) ((100 * current) / total));
-            }
+            callback.onProgress((int) ((100 * current) / total));
             output.write(data, 0, count);
         }
 
@@ -159,9 +159,7 @@ public class FileHandler {
         output.close();
         input.close();
 
-        if (callback != null) {
-            callback.onFinish();
-        }
+        callback.onFinish();
     }
 
     public String readFile(Callback callback,
@@ -221,6 +219,18 @@ public class FileHandler {
             }
         }
         return true;
+    }
+
+    public static int getBufferSize() {
+        return BUFFER_SIZE;
+    }
+
+    public static char[] getIllegalCharacters() {
+        return Arrays.copyOf(ILLEGAL_CHARACTERS, ILLEGAL_CHARACTERS.length);
+    }
+
+    public EAPActivity getActivity() {
+        return activity;
     }
 
 }

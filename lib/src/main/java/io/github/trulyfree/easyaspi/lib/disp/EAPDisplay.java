@@ -22,27 +22,23 @@ package io.github.trulyfree.easyaspi.lib.disp;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 
-import java.util.Collection;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import io.github.trulyfree.easyaspi.lib.EAPActivity;
 import io.github.trulyfree.easyaspi.lib.dl.DownloadHandler;
 import io.github.trulyfree.easyaspi.lib.io.FileHandler;
 import io.github.trulyfree.easyaspi.lib.module.ModuleHandler;
 import io.github.trulyfree.easyaspi.lib.module.conf.ModuleConfig;
-import io.github.trulyfree.modular6.action.Action;
-import io.github.trulyfree.modular6.action.handlers.ActionHandler;
-import io.github.trulyfree.modular6.action.handlers.BackgroundGeneralizedActionHandler;
-import io.github.trulyfree.modular6.display.Display;
-import io.github.trulyfree.modular6.display.DisplayableModule;
-import io.github.trulyfree.modular6.display.except.DisplayableException;
 
-public final class EAPDisplay extends EAPActivity implements Display<EAPDisplayable> {
+public final class EAPDisplay extends AppCompatActivity implements EAPActivity {
 
     private DownloadHandler downloadHandler;
     private FileHandler fileHandler;
     private ModuleHandler moduleHandler;
-    private ActionHandler<Action> actionHandler;
+    private ExecutorService executorService;
 
     private EAPDisplayableModule currentModule;
 
@@ -60,33 +56,22 @@ public final class EAPDisplay extends EAPActivity implements Display<EAPDisplaya
     }
 
     @Override
-    public boolean setDisplayableModule(DisplayableModule<EAPDisplayable> displayableModule) throws DisplayableException {
-        EAPDisplayable target = null;
-        if (displayableModule instanceof EAPDisplayableModule) {
-            EAPDisplayableModule targetModule = (EAPDisplayableModule) displayableModule;
-            try {
-                targetModule.setActivity(this);
-                targetModule.setup();
-                Collection<EAPDisplayable> displayables = displayableModule.getDisplayables();
-                target = displayables.iterator().next();
-                if (target.getLayoutParams() == null) {
-                    setContentView(target.getRootView());
-                } else {
-                    setContentView(target.getRootView(), target.getLayoutParams());
-                }
-                this.currentModule = (EAPDisplayableModule) displayableModule;
-                this.currentModule.setActivity(this);
-            } catch (Exception e) {
-                if (target == null) {
-                    e.printStackTrace();
-                    throw new NullPointerException("No EAPDisplayable provided.");
-                } else {
-                    throw new DisplayableException(e, target);
-                }
+    public boolean setDisplayableModule(EAPDisplayableModule displayableModule) {
+        try {
+            displayableModule.setActivity(this);
+            displayableModule.setup();
+            if (displayableModule.getLayoutParams() == null) {
+                setContentView(displayableModule.getRootView());
+            } else {
+                setContentView(displayableModule.getRootView(), displayableModule.getLayoutParams());
             }
-            return true;
+            this.currentModule = displayableModule;
+            this.currentModule.setActivity(this);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
-        return false;
+        return true;
     }
 
     @Override
@@ -102,22 +87,14 @@ public final class EAPDisplay extends EAPActivity implements Display<EAPDisplaya
         this.moduleHandler = new ModuleHandler(this);
         this.fileHandler = new FileHandler(this);
         this.downloadHandler = new DownloadHandler(this);
-        this.actionHandler = new BackgroundGeneralizedActionHandler((byte) (Runtime.getRuntime().availableProcessors() * 2));
+        this.executorService = Executors.newCachedThreadPool();
         moduleHandler.setup();
-        actionHandler.setup();
-        actionHandler.enact();
         try {
             String config = extras.getString("targetModule");
             System.out.println(config);
             ModuleConfig moduleConfig = moduleHandler.fromJson(config);
             EAPDisplayableModule module = moduleHandler.loadModule(moduleConfig);
             this.setDisplayableModule(module);
-        } catch (DisplayableException e) {
-            e.printStackTrace();
-            Intent returned = new Intent();
-            returned.putExtra("error", "Module failed to be rendered.");
-            setResult(RESULT_CANCELED, returned);
-            return false;
         } catch (IllegalAccessException e) {
             e.printStackTrace();
             Intent returned = new Intent();
@@ -171,7 +148,8 @@ public final class EAPDisplay extends EAPActivity implements Display<EAPDisplaya
     }
 
     @Override
-    public ActionHandler<Action> getActionHandler() {
-        return actionHandler;
+    public ExecutorService getExecutorService() {
+        return executorService;
     }
+
 }
