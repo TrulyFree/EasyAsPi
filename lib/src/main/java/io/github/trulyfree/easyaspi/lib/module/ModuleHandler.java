@@ -22,6 +22,7 @@ package io.github.trulyfree.easyaspi.lib.module;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.widget.Toast;
 
 import com.android.dx.command.dexer.Main;
@@ -35,6 +36,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Stack;
+import java.util.concurrent.Callable;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -54,6 +56,7 @@ public class ModuleHandler implements Module {
     private Gson gson;
     private File configDir, jarDir, undexedDir, dexedJar, optimizedDexDir;
     private DexClassLoader classLoader;
+    private boolean working = false;
 
     public ModuleHandler(@NonNull EAPActivity activity) {
         this.activity = activity;
@@ -66,7 +69,7 @@ public class ModuleHandler implements Module {
         return gson.fromJson(stringConfig, ModuleConfig.class);
     }
 
-    public boolean getNewModule(StagedCallback callback, @NonNull ModuleConfig config, Stack<String> alreadyDownloaded, boolean refreshDexed) throws IOException, JsonParseException {
+    public boolean getNewModule(@Nullable StagedCallback callback, @NonNull ModuleConfig config, @Nullable Stack<String> alreadyDownloaded, boolean refreshDexed) throws IOException, JsonParseException {
         DownloadHandler downloadHandler = activity.getDownloadHandler();
         FileHandler fileHandler = activity.getFileHandler();
 
@@ -88,11 +91,11 @@ public class ModuleHandler implements Module {
                 callback = EmptyCallback.EMPTY;
             }
 
-            String[] stages = new String[config.getDependencies().length + 1];
+            String[] stages = new String[config.getDependencies().length + 2];
 
             stages[0] = "Getting main jar (" + config.getName() + ")...";
             StringBuilder stringBuilder;
-            for (int i = 1; i < stages.length; i++) {
+            for (int i = 1; i < stages.length - 1; i++) {
                 stringBuilder = new StringBuilder("Getting dependency ");
                 stringBuilder.append(config.getDependencies()[i - 1].getName());
                 stringBuilder.append(" (");
@@ -102,6 +105,7 @@ public class ModuleHandler implements Module {
                 stringBuilder.append(")...");
                 stages[i] = stringBuilder.toString();
             }
+            stages[stages.length - 1] = "Building modules...";
             callback.setStages(stages);
 
             writtenFiles.push(fileHandler.generateFile("jars", config.getName() + ".jar"));
@@ -139,8 +143,40 @@ public class ModuleHandler implements Module {
                 }
             }
             refreshConfigs();
-            if (refreshDexed)
-                refreshDexed();
+            if (refreshDexed) {
+                final StagedCallback intermediary = callback;
+                callback.onStart();
+                refreshDexed(new StagedCallback() {
+                    int stageCount = 1, current = 0;
+
+                    @Override
+                    public void setStages(String[] names) {
+                        stageCount = names.length;
+                    }
+
+                    @Override
+                    public void onStart() {
+                        // Do nothing.
+                    }
+
+                    @Override
+                    public void onProgress(int current) {
+                        int numerator = this.current * 100 + current;
+                        int denominator = this.stageCount;
+                        intermediary.onProgress(numerator / denominator);
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        current++;
+                    }
+                });
+                callback.onFinish();
+            } else {
+                callback.onStart();
+                callback.onProgress(100);
+                callback.onFinish();
+            }
         } catch (IOException e) {
             for (File file : writtenFiles) {
                 if (file.exists()) {
@@ -195,10 +231,11 @@ public class ModuleHandler implements Module {
         undexedDir.renameTo(backupClassesFolder);
         undexedDir.mkdirs();
         try {
-            String[] stages = new String[configs.length];
-            for (int i = 0; i < stages.length; i++) {
+            String[] stages = new String[configs.length + 1];
+            for (int i = 0; i < configs.length; i++) {
                 stages[i] = "Getting module " + configs[i].getName();
             }
+            stages[configs.length] = "Building modules...";
             if (callback == null) {
                 callback = EmptyCallback.EMPTY;
             }
@@ -234,7 +271,33 @@ public class ModuleHandler implements Module {
                 }, config, alreadyDownloaded, false);
                 callback.onFinish();
             }
-            refreshDexed();
+            callback.onStart();
+            refreshDexed(new StagedCallback() {
+                int stageCount = 1, current = 0;
+
+                @Override
+                public void setStages(String[] names) {
+                    stageCount = names.length;
+                }
+
+                @Override
+                public void onStart() {
+                    // Do nothing.
+                }
+
+                @Override
+                public void onProgress(int current) {
+                    int numerator = this.current * 100 + current;
+                    int denominator = this.stageCount;
+                    intermediary.onProgress(numerator / denominator);
+                }
+
+                @Override
+                public void onFinish() {
+                    current++;
+                }
+            });
+            callback.onFinish();
         } catch (IOException | JsonParseException e) {
             e.printStackTrace();
             activity.getFileHandler().deleteFile(undexedDir);
@@ -287,7 +350,14 @@ public class ModuleHandler implements Module {
 
         try {
             refreshConfigs();
-            refreshDexed();
+            if (dexedJar.exists()) {
+                classLoader = new DexClassLoader(dexedJar.getAbsolutePath(),
+                        optimizedDexDir.getAbsolutePath(),
+                        null,
+                        activity.getClassLoader());
+            } else {
+                refreshDexed(EmptyCallback.EMPTY);
+            }
         } catch (IOException ex) {
             ex.printStackTrace();
             return false;
@@ -340,35 +410,74 @@ public class ModuleHandler implements Module {
         configs = configList.toArray(new ModuleConfig[configList.size()]);
     }
 
-    private void refreshDexed() throws IOException {
-        if (dexedJar.exists()) {
-            dexedJar.delete();
+    private void refreshDexed(final @NonNull StagedCallback callback) throws IOException {
+        if (working) {
+            activity.displayToUser("Wait until dexing finishes.", Toast.LENGTH_SHORT);
         }
-        dexedJar.getParentFile().mkdirs();
+        working = true;
+        activity.getExecutorService().submit(new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                callback.onStart();
+                if (dexedJar.exists()) {
+                    dexedJar.delete();
+                }
+                dexedJar.getParentFile().mkdirs();
 
-        clearUntrackedJars();
+                clearUntrackedJars();
 
-        unpackageJars();
+                unpackageJars(new StagedCallback() {
+                    int stageCount = 1, current = 0;
 
-        if (undexedDir.list().length == 0) {
-            return;
-        }
+                    @Override
+                    public void setStages(String[] names) {
+                        stageCount = names.length;
+                    }
 
-        String[] args = new String[]{
-                "--keep-classes",
-                "--output=" + dexedJar.getAbsolutePath(),
-                undexedDir.getAbsolutePath()
-        };
+                    @Override
+                    public void onStart() {
+                        // Do nothing.
+                    }
 
-        Main.main(args);
+                    @Override
+                    public void onProgress(int current) {
+                        int numerator = this.current * 100 + current;
+                        int denominator = this.stageCount;
+                        callback.onProgress(numerator / denominator);
+                    }
 
-        classLoader = new DexClassLoader(dexedJar.getAbsolutePath(),
-                optimizedDexDir.getAbsolutePath(),
-                null,
-                activity.getClassLoader());
+                    @Override
+                    public void onFinish() {
+                        current++;
+                    }
+                });
+
+                if (undexedDir.list().length == 0) {
+                    return null;
+                }
+
+                String[] args = new String[]{
+                        "--keep-classes",
+                        "--verbose",
+                        "--output=" + dexedJar.getAbsolutePath(),
+                        undexedDir.getAbsolutePath()
+                };
+
+                Main.main(args);
+
+                classLoader = new DexClassLoader(dexedJar.getAbsolutePath(),
+                        optimizedDexDir.getAbsolutePath(),
+                        null,
+                        activity.getClassLoader());
+                callback.onProgress(100);
+                callback.onFinish();
+                return null;
+            }
+        });
+        working = false;
     }
 
-    private void unpackageJars() throws IOException {
+    private void unpackageJars(final @NonNull StagedCallback callback) throws IOException {
         String targetDir = undexedDir.getAbsolutePath();
         JarFile jarFile;
         Enumeration<JarEntry> jarEntryEnumeration;
@@ -376,8 +485,11 @@ public class ModuleHandler implements Module {
         File outputFile;
         InputStream fromJar;
         FileOutputStream toFile;
-        for (File jar : jarDir.listFiles()) {
-            jarFile = new JarFile(jar);
+        File[] jarFiles = jarDir.listFiles();
+        callback.setStages(new String[jarFiles.length]);
+        for (int i = 0; i < jarFiles.length; i++) {
+            callback.onStart();
+            jarFile = new JarFile(jarFiles[i]);
             jarEntryEnumeration = jarFile.entries();
             while (jarEntryEnumeration.hasMoreElements()) {
                 jarEntry = jarEntryEnumeration.nextElement();
@@ -399,6 +511,8 @@ public class ModuleHandler implements Module {
                 fromJar.close();
                 toFile.close();
             }
+            callback.onProgress(100);
+            callback.onFinish();
         }
     }
 
