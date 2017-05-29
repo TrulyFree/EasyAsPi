@@ -30,7 +30,11 @@ import io.github.trulyfree.easyaspi.lib.module.Module;
 public interface EAPDisplayableModule extends Module {
     public void setActivity(EAPDisplay activity);
 
+    public EAPDisplay getActivity();
+
     public void setExecutorService(ExecutorService executorService);
+
+    public ExecutorService getExecutorService();
 
     public View getRootView();
 

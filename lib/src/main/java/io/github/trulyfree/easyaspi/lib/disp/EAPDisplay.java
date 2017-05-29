@@ -23,6 +23,7 @@ package io.github.trulyfree.easyaspi.lib.disp;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.widget.Toast;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -72,6 +73,11 @@ public final class EAPDisplay extends AppCompatActivity implements EAPActivity {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public void displayToUser(String text, int time) {
+        Toast.makeText(this, text, time).show();
     }
 
     @Override

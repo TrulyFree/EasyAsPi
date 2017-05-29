@@ -41,6 +41,6 @@ public interface EAPActivity extends Module {
     // For ModuleHandler support.
     public ClassLoader getClassLoader();
     public void runOnUiThread(Runnable runnable);
-    // For ToastCreation support.
+    // For Toast creation support.
     public void displayToUser(String text, int time);
 }
