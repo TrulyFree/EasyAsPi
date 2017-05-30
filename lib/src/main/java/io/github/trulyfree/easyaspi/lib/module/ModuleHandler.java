@@ -36,7 +36,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Stack;
-import java.util.concurrent.Callable;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -56,10 +55,14 @@ public class ModuleHandler implements Module {
     private Gson gson;
     private File configDir, jarDir, undexedDir, dexedJar, optimizedDexDir;
     private DexClassLoader classLoader;
-    private boolean working = false;
+    private ModuleConfig[] defaultConfigs;
 
     public ModuleHandler(@NonNull EAPActivity activity) {
         this.activity = activity;
+        // TODO REMOVE
+        this.defaultConfigs = new ModuleConfig[]{
+                io.github.trulyfree.easyaspi.ssh.Main.getConfig()
+        };
     }
 
     public ModuleConfig getModuleConfig(@NonNull String configUrl) throws IOException, JsonParseException {
@@ -74,10 +77,10 @@ public class ModuleHandler implements Module {
         FileHandler fileHandler = activity.getFileHandler();
 
         if (alreadyDownloaded == null) {
-            alreadyDownloaded = new Stack<>();
+            alreadyDownloaded = new Stack<String>();
         }
 
-        Stack<File> writtenFiles = new Stack<>();
+        Stack<File> writtenFiles = new Stack<File>();
 
         try {
             String stringConfig = gson.toJson(config);
@@ -201,7 +204,7 @@ public class ModuleHandler implements Module {
 
     private void clearUntrackedJars() {
         FileHandler fileHandler = activity.getFileHandler();
-        ArrayList<String> jarStrings = new ArrayList<>();
+        ArrayList<String> jarStrings = new ArrayList<String>();
         for (String file : jarDir.list()) {
             int dir = file.lastIndexOf(File.separatorChar);
             if (dir != -1) {
@@ -240,7 +243,7 @@ public class ModuleHandler implements Module {
                 callback = EmptyCallback.EMPTY;
             }
             callback.setStages(stages);
-            Stack<String> alreadyDownloaded = new Stack<>();
+            Stack<String> alreadyDownloaded = new Stack<String>();
             final StagedCallback intermediary = callback;
             for (ModuleConfig config : configs) {
                 callback.onStart();
@@ -298,7 +301,12 @@ public class ModuleHandler implements Module {
                 }
             });
             callback.onFinish();
-        } catch (IOException | JsonParseException e) {
+        } catch (IOException e) {
+            e.printStackTrace();
+            activity.getFileHandler().deleteFile(undexedDir);
+            backupClassesFolder.renameTo(undexedDir);
+            throw e;
+        } catch (JsonParseException e) {
             e.printStackTrace();
             activity.getFileHandler().deleteFile(undexedDir);
             backupClassesFolder.renameTo(undexedDir);
@@ -321,13 +329,10 @@ public class ModuleHandler implements Module {
 
     public Object instantiate(String classname) throws ClassNotFoundException, IllegalAccessException, InstantiationException {
         if (classLoader == null) {
-            activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    activity.displayToUser("Refresh all modules before launching a module.", Toast.LENGTH_LONG);
-                }
-            });
-            return null;
+            classLoader = new DexClassLoader(dexedJar.getAbsolutePath(),
+                    optimizedDexDir.getAbsolutePath(),
+                    null,
+                    activity.getClassLoader());
         }
         return classLoader.loadClass(classname).newInstance();
     }
@@ -350,14 +355,6 @@ public class ModuleHandler implements Module {
 
         try {
             refreshConfigs();
-            if (dexedJar.exists()) {
-                classLoader = new DexClassLoader(dexedJar.getAbsolutePath(),
-                        optimizedDexDir.getAbsolutePath(),
-                        null,
-                        activity.getClassLoader());
-            } else {
-                refreshDexed(EmptyCallback.EMPTY);
-            }
         } catch (IOException ex) {
             ex.printStackTrace();
             return false;
@@ -391,7 +388,7 @@ public class ModuleHandler implements Module {
     private void refreshConfigs() throws IOException {
         FileHandler fileHandler = activity.getFileHandler();
         final File[] configFiles = configDir.listFiles();
-        ArrayList<ModuleConfig> configList = new ArrayList<>(configFiles.length);
+        ArrayList<ModuleConfig> configList = new ArrayList<ModuleConfig>(configFiles.length + defaultConfigs.length);
         ModuleConfig midconfig;
         for (int i = 0; i < configFiles.length; i++) {
             final int intermediary = i;
@@ -407,74 +404,68 @@ public class ModuleHandler implements Module {
                 configList.add(midconfig);
             }
         }
+        for (ModuleConfig defaultConfig : defaultConfigs) {
+            configList.add(defaultConfig);
+        }
         configs = configList.toArray(new ModuleConfig[configList.size()]);
     }
 
     private void refreshDexed(final @NonNull StagedCallback callback) throws IOException {
-        if (working) {
-            activity.displayToUser("Wait until dexing finishes.", Toast.LENGTH_SHORT);
+
+        callback.onStart();
+        if (dexedJar.exists()) {
+            dexedJar.delete();
         }
-        working = true;
-        activity.getExecutorService().submit(new Callable<Void>() {
+        dexedJar.getParentFile().mkdirs();
+
+        clearUntrackedJars();
+
+        unpackageJars(new StagedCallback() {
+            int stageCount = 1, current = 0;
+
             @Override
-            public Void call() throws Exception {
-                callback.onStart();
-                if (dexedJar.exists()) {
-                    dexedJar.delete();
-                }
-                dexedJar.getParentFile().mkdirs();
+            public void setStages(String[] names) {
+                stageCount = names.length;
+            }
 
-                clearUntrackedJars();
+            @Override
+            public void onStart() {
+                // Do nothing.
+            }
 
-                unpackageJars(new StagedCallback() {
-                    int stageCount = 1, current = 0;
+            @Override
+            public void onProgress(int current) {
+                int numerator = this.current * 100 + current;
+                int denominator = this.stageCount;
+                callback.onProgress(numerator / denominator);
+            }
 
-                    @Override
-                    public void setStages(String[] names) {
-                        stageCount = names.length;
-                    }
-
-                    @Override
-                    public void onStart() {
-                        // Do nothing.
-                    }
-
-                    @Override
-                    public void onProgress(int current) {
-                        int numerator = this.current * 100 + current;
-                        int denominator = this.stageCount;
-                        callback.onProgress(numerator / denominator);
-                    }
-
-                    @Override
-                    public void onFinish() {
-                        current++;
-                    }
-                });
-
-                if (undexedDir.list().length == 0) {
-                    return null;
-                }
-
-                String[] args = new String[]{
-                        "--keep-classes",
-                        "--verbose",
-                        "--output=" + dexedJar.getAbsolutePath(),
-                        undexedDir.getAbsolutePath()
-                };
-
-                Main.main(args);
-
-                classLoader = new DexClassLoader(dexedJar.getAbsolutePath(),
-                        optimizedDexDir.getAbsolutePath(),
-                        null,
-                        activity.getClassLoader());
-                callback.onProgress(100);
-                callback.onFinish();
-                return null;
+            @Override
+            public void onFinish() {
+                current++;
             }
         });
-        working = false;
+
+        if (undexedDir.list().length == 0) {
+            return;
+        }
+
+        String[] args = new String[]{
+                "--keep-classes",
+                "--verbose",
+                "--incremental",
+                "--output=" + dexedJar.getAbsolutePath(),
+                undexedDir.getAbsolutePath()
+        };
+
+        Main.main(args);
+
+        classLoader = new DexClassLoader(dexedJar.getAbsolutePath(),
+                optimizedDexDir.getAbsolutePath(),
+                null,
+                activity.getClassLoader());
+        callback.onProgress(100);
+        callback.onFinish();
     }
 
     private void unpackageJars(final @NonNull StagedCallback callback) throws IOException {

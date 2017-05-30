@@ -25,6 +25,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -36,10 +37,10 @@ import io.github.trulyfree.easyaspi.lib.module.conf.ModuleConfig;
 
 public final class EAPDisplay extends AppCompatActivity implements EAPActivity {
 
-    private DownloadHandler downloadHandler;
-    private FileHandler fileHandler;
-    private ModuleHandler moduleHandler;
-    private ExecutorService executorService;
+    private volatile DownloadHandler downloadHandler;
+    private volatile FileHandler fileHandler;
+    private volatile ModuleHandler moduleHandler;
+    private volatile ExecutorService executorService;
 
     private EAPDisplayableModule currentModule;
 
@@ -57,14 +58,27 @@ public final class EAPDisplay extends AppCompatActivity implements EAPActivity {
     }
 
     @Override
-    public boolean setDisplayableModule(EAPDisplayableModule displayableModule) {
+    public boolean setDisplayableModule(final EAPDisplayableModule displayableModule) {
         try {
             displayableModule.setActivity(this);
+            displayableModule.setExecutorService(executorService);
             displayableModule.setup();
-            if (displayableModule.getLayoutParams() == null) {
-                setContentView(displayableModule.getRootView());
-            } else {
-                setContentView(displayableModule.getRootView(), displayableModule.getLayoutParams());
+            final Object lock = new Object();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (displayableModule.getLayoutParams() == null) {
+                        setContentView(displayableModule.getRootView());
+                    } else {
+                        setContentView(displayableModule.getRootView(), displayableModule.getLayoutParams());
+                    }
+                    synchronized (lock) {
+                        lock.notifyAll();
+                    }
+                }
+            });
+            synchronized (lock) {
+                lock.wait();
             }
             this.currentModule = displayableModule;
             this.currentModule.setActivity(this);
@@ -76,14 +90,19 @@ public final class EAPDisplay extends AppCompatActivity implements EAPActivity {
     }
 
     @Override
-    public void displayToUser(String text, int time) {
-        Toast.makeText(this, text, time).show();
+    public void displayToUser(final String text, final int time) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(EAPDisplay.this, text, time).show();
+            }
+        });
     }
 
     @Override
     public boolean setup() {
         Intent intent = this.getIntent();
-        Bundle extras = intent.getExtras();
+        final Bundle extras = intent.getExtras();
         if (extras == null) {
             Intent returned = new Intent();
             returned.putExtra("error", "No extras were sent as part of the launching intent.");
@@ -95,37 +114,47 @@ public final class EAPDisplay extends AppCompatActivity implements EAPActivity {
         this.downloadHandler = new DownloadHandler(this);
         this.executorService = Executors.newCachedThreadPool();
         moduleHandler.setup();
-        try {
-            String config = extras.getString("targetModule");
-            System.out.println(config);
-            ModuleConfig moduleConfig = moduleHandler.fromJson(config);
-            EAPDisplayableModule module = moduleHandler.loadModule(moduleConfig);
-            this.setDisplayableModule(module);
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-            Intent returned = new Intent();
-            returned.putExtra("error", "Module was not accessible.");
-            setResult(RESULT_CANCELED, returned);
-            return false;
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-            Intent returned = new Intent();
-            returned.putExtra("error", "Module was not instantiable (check constructor).");
-            setResult(RESULT_CANCELED, returned);
-            return false;
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-            Intent returned = new Intent();
-            returned.putExtra("error", "Class defined by module was not found.");
-            setResult(RESULT_CANCELED, returned);
-            return false;
-        } catch (NullPointerException e) {
-            e.printStackTrace();
-            Intent returned = new Intent();
-            returned.putExtra("error", "No module information sent.");
-            setResult(RESULT_CANCELED, returned);
-            return false;
-        }
+        executorService.submit(new Callable<Boolean>() {
+            @Override
+            public Boolean call() throws Exception {
+                boolean success = true;
+                try {
+                    String config = extras.getString("targetModule");
+                    System.out.println(config);
+                    ModuleConfig moduleConfig = moduleHandler.fromJson(config);
+                    EAPDisplayableModule module = moduleHandler.loadModule(moduleConfig);
+                    setDisplayableModule(module);
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                    Intent returned = new Intent();
+                    returned.putExtra("error", "Module was not accessible.");
+                    setResult(RESULT_CANCELED, returned);
+                    success = false;
+                } catch (InstantiationException e) {
+                    e.printStackTrace();
+                    Intent returned = new Intent();
+                    returned.putExtra("error", "Module was not instantiable (check constructor).");
+                    setResult(RESULT_CANCELED, returned);
+                    success = false;
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                    Intent returned = new Intent();
+                    returned.putExtra("error", "Class defined by module was not found.");
+                    setResult(RESULT_CANCELED, returned);
+                    success = false;
+                } catch (NullPointerException e) {
+                    e.printStackTrace();
+                    Intent returned = new Intent();
+                    returned.putExtra("error", "No module information sent.");
+                    setResult(RESULT_CANCELED, returned);
+                    success = false;
+                }
+                if (!success) {
+                    finish();
+                }
+                return success;
+            }
+        });
         return true;
     }
 

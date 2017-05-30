@@ -40,12 +40,13 @@ android {
     lintOptions {
         abortOnError false
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_6
+        targetCompatibility JavaVersion.VERSION_1_6
+    }
 }
 
 dependencies {
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    })
     compile group: 'com.android.support', name: 'appcompat-v7', version: '25.3.1'
     compile group: 'com.android.support', name: 'design', version: '25.3.1'
     testCompile group: 'junit', name: 'junit', version: '4.12'

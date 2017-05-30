@@ -64,7 +64,7 @@ import io.github.trulyfree.easyaspi.lib.module.conf.ModuleConfig;
 
 import static android.widget.LinearLayout.LayoutParams;
 
-public class MainActivity extends AppCompatActivity implements EAPActivity {
+public final class MainActivity extends AppCompatActivity implements EAPActivity {
 
     public static final int ANIMATION_DURATION = 500;
     private DownloadHandler downloadHandler;
@@ -166,7 +166,7 @@ public class MainActivity extends AppCompatActivity implements EAPActivity {
                         colorAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                             @Override
                             public void onAnimationUpdate(ValueAnimator animator) {
-                                configResponseBlock.setBackgroundColor((int) animator.getAnimatedValue());
+                                configResponseBlock.setBackgroundColor((Integer) animator.getAnimatedValue());
                             }
                         });
                         colorAnimation.addListener(new Animator.AnimatorListener() {
@@ -229,9 +229,19 @@ public class MainActivity extends AppCompatActivity implements EAPActivity {
                                             executorService.submit(new Callable<Boolean>() {
                                                 @Override
                                                 public Boolean call() {
+                                                    boolean success = true, refreshAllModification = true;
+                                                    Button refreshAll = null, getNewModule = (Button) findViewById(R.id.new_module_config_confirm);
+                                                    try {
+                                                        refreshAll = (Button) findViewById(R.id.refresh_all);
+                                                        refreshAll.setClickable(false);
+                                                    } catch (Throwable e) {
+                                                        refreshAllModification = false;
+                                                    }
+                                                    getNewModule.setClickable(false);
                                                     final TextView stager = (TextView) findViewById(R.id.new_module_config_downloadstage);
                                                     final ProgressBar progressBar = (ProgressBar) findViewById(R.id.new_module_config_downloadprogress);
                                                     try {
+                                                        resetConfigReturned();
                                                         moduleHandler.getNewModule(makeModuleCallback(stager, progressBar),
                                                                 finalConfig, null, true);
                                                     } catch (IOException e) {
@@ -243,9 +253,13 @@ public class MainActivity extends AppCompatActivity implements EAPActivity {
                                                                 progressBar.setProgress(0);
                                                             }
                                                         });
-                                                        return false;
+                                                        success = false;
                                                     }
-                                                    return true;
+                                                    getNewModule.setClickable(true);
+                                                    if (refreshAllModification) {
+                                                        refreshAll.setClickable(true);
+                                                    }
+                                                    return success;
                                                 }
                                             });
                                         }
@@ -268,7 +282,7 @@ public class MainActivity extends AppCompatActivity implements EAPActivity {
                                     colorAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                                         @Override
                                         public void onAnimationUpdate(ValueAnimator animator) {
-                                            configResponseBlock.setBackgroundColor((int) animator.getAnimatedValue());
+                                            configResponseBlock.setBackgroundColor((Integer) animator.getAnimatedValue());
                                         }
                                     });
                                 }
@@ -314,7 +328,7 @@ public class MainActivity extends AppCompatActivity implements EAPActivity {
         dashboard.removeAllViewsInLayout();
         if (moduleHandler.getConfigs().length != 0) {
             final LinearLayout moduleList = (LinearLayout) ((LinearLayout) getLayoutInflater().inflate(R.layout.modulelist, dashboard)).getChildAt(0);
-            Button refreshAll = (Button) findViewById(R.id.refresh_all);
+            final Button refreshAll = (Button) findViewById(R.id.refresh_all);
             refreshAll.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
@@ -322,6 +336,8 @@ public class MainActivity extends AppCompatActivity implements EAPActivity {
                     executorService.submit(new Callable<Boolean>() {
                         @Override
                         public Boolean call() {
+                            boolean success = true;
+                            refreshAll.setClickable(false);
                             final TextView stager = (TextView) findViewById(R.id.refresh_download_stage);
                             final ProgressBar progressBar = (ProgressBar) findViewById(R.id.refresh_bar);
                             try {
@@ -335,9 +351,10 @@ public class MainActivity extends AppCompatActivity implements EAPActivity {
                                         progressBar.setProgress(0);
                                     }
                                 });
-                                return false;
+                                success = false;
                             }
-                            return true;
+                            refreshAll.setClickable(true);
+                            return success;
                         }
                     });
                 }
@@ -417,7 +434,7 @@ public class MainActivity extends AppCompatActivity implements EAPActivity {
         colorAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animator) {
-                configResponseBlock.setBackgroundColor((int) animator.getAnimatedValue());
+                configResponseBlock.setBackgroundColor((Integer) animator.getAnimatedValue());
             }
         });
         layout.setClickable(false);
