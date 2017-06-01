@@ -55,13 +55,11 @@ public class ModuleHandler implements Module {
     private Gson gson;
     private File configDir, jarDir, undexedDir, dexedJar, optimizedDexDir;
     private DexClassLoader classLoader;
-    private ModuleConfig[] defaultConfigs;
+    private ModuleConfig[] debugConfigs;
 
     public ModuleHandler(@NonNull EAPActivity activity) {
         this.activity = activity;
-        // TODO REMOVE
-        this.defaultConfigs = new ModuleConfig[]{
-                io.github.trulyfree.easyaspi.ssh.Main.getConfig()
+        this.debugConfigs = new ModuleConfig[]{
         };
     }
 
@@ -388,7 +386,7 @@ public class ModuleHandler implements Module {
     private void refreshConfigs() throws IOException {
         FileHandler fileHandler = activity.getFileHandler();
         final File[] configFiles = configDir.listFiles();
-        ArrayList<ModuleConfig> configList = new ArrayList<ModuleConfig>(configFiles.length + defaultConfigs.length);
+        ArrayList<ModuleConfig> configList = new ArrayList<ModuleConfig>(configFiles.length + debugConfigs.length);
         ModuleConfig midconfig;
         for (int i = 0; i < configFiles.length; i++) {
             final int intermediary = i;
@@ -404,8 +402,8 @@ public class ModuleHandler implements Module {
                 configList.add(midconfig);
             }
         }
-        for (ModuleConfig defaultConfig : defaultConfigs) {
-            configList.add(defaultConfig);
+        for (ModuleConfig debugConfig : debugConfigs) {
+            configList.add(debugConfig);
         }
         configs = configList.toArray(new ModuleConfig[configList.size()]);
     }
@@ -478,9 +476,9 @@ public class ModuleHandler implements Module {
         FileOutputStream toFile;
         File[] jarFiles = jarDir.listFiles();
         callback.setStages(new String[jarFiles.length]);
-        for (int i = 0; i < jarFiles.length; i++) {
+        for (File jarFile1 : jarFiles) {
             callback.onStart();
-            jarFile = new JarFile(jarFiles[i]);
+            jarFile = new JarFile(jarFile1);
             jarEntryEnumeration = jarFile.entries();
             while (jarEntryEnumeration.hasMoreElements()) {
                 jarEntry = jarEntryEnumeration.nextElement();

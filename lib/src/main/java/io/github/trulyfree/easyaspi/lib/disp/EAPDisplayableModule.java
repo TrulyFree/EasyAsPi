@@ -20,6 +20,7 @@
 
 package io.github.trulyfree.easyaspi.lib.disp;
 
+import android.content.Intent;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -29,14 +30,9 @@ import io.github.trulyfree.easyaspi.lib.module.Module;
 
 public interface EAPDisplayableModule extends Module {
     public void setActivity(EAPDisplay activity);
-
     public EAPDisplay getActivity();
-
     public void setExecutorService(ExecutorService executorService);
-
     public ExecutorService getExecutorService();
-
-    public View getRootView();
-
+    public View getRootView(Intent data);
     public ViewGroup.LayoutParams getLayoutParams();
 }

@@ -22,6 +22,7 @@ package io.github.trulyfree.easyaspi.lib.disp;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
 
@@ -68,9 +69,9 @@ public final class EAPDisplay extends AppCompatActivity implements EAPActivity {
                 @Override
                 public void run() {
                     if (displayableModule.getLayoutParams() == null) {
-                        setContentView(displayableModule.getRootView());
+                        setContentView(displayableModule.getRootView(getIntent()));
                     } else {
-                        setContentView(displayableModule.getRootView(), displayableModule.getLayoutParams());
+                        setContentView(displayableModule.getRootView(getIntent()), displayableModule.getLayoutParams());
                     }
                     synchronized (lock) {
                         lock.notifyAll();
@@ -168,6 +169,14 @@ public final class EAPDisplay extends AppCompatActivity implements EAPActivity {
         setResult(RESULT_OK);
         finish();
         return true;
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (currentModule != null && currentModule instanceof PreferenceManager.OnActivityResultListener) {
+            ((PreferenceManager.OnActivityResultListener) currentModule).onActivityResult(requestCode, resultCode, data);
+        }
     }
 
     public DownloadHandler getDownloadHandler() {
