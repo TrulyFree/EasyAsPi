@@ -5,8 +5,6 @@
       <module fileurl="file://$PROJECT_DIR$/EasyAsPi.iml" filepath="$PROJECT_DIR$/EasyAsPi.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/lib/lib.iml" filepath="$PROJECT_DIR$/lib/lib.iml" />
-      <module fileurl="file://$PROJECT_DIR$/ssh/ssh.iml" filepath="$PROJECT_DIR$/ssh/ssh.iml" />
-      <module fileurl="file://$PROJECT_DIR$/updator/updator.iml" filepath="$PROJECT_DIR$/updator/updator.iml" />
     </modules>
   </component>
 </project>
