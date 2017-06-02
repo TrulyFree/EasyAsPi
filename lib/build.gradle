@@ -30,6 +30,9 @@ android {
         versionName rootProject.versionName
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
+    configurations {
+        javadocDeps
+    }
     buildTypes {
         release {
             minifyEnabled false

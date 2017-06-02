@@ -20,12 +20,36 @@
 
 package io.github.trulyfree.easyaspi.lib.module.conf;
 
+/**
+ * Config for Modules, which must exist jsonified for Module downloads.
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.1-alpha
+ */
 public class ModuleConfig extends Config {
+    /**
+     * The version of this module.
+     */
     private String version;
+
+    /**
+     * The URL for the configuration file of this module.
+     */
     private String confUrl;
+
+    /**
+     * The fully qualified classname of the target displayable module.
+     */
     private String targetModule;
+
+    /**
+     * An array of configs for the dependencies of this module.
+     */
     private Config[] dependencies;
 
+    /**
+     * Standard constructor for the ModuleConfig, which just defines initial non-null values for fields.
+     */
     public ModuleConfig() {
         this.version = "";
         this.confUrl = "";
@@ -33,34 +57,74 @@ public class ModuleConfig extends Config {
         this.dependencies = new Config[0];
     }
 
+    /**
+     * Returns the version of this module.
+     *
+     * @return version The version of this module.
+     */
     public String getVersion() {
         return version;
     }
 
+    /**
+     * Sets the version of this module.
+     *
+     * @param version The version of this module.
+     */
     public void setVersion(String version) {
         this.version = version;
     }
 
+    /**
+     * Returns the URL for the configuration file of this module.
+     *
+     * @return confUrl The URL for the configuration file of this module.
+     */
     public String getConfUrl() {
         return confUrl;
     }
 
+    /**
+     * Sets the URL for the configuration file of this module.
+     *
+     * @param confUrl The URL for the configuration file of this module.
+     */
     public void setConfUrl(String confUrl) {
         this.confUrl = confUrl;
     }
 
+    /**
+     * Returns the fully qualified classname of the target displayable module.
+     *
+     * @return targetModule The fully qualified classname of the target displayable module.
+     */
     public String getTargetModule() {
         return targetModule;
     }
 
+    /**
+     * Set the fully qualified classname of the target displayable module.
+     *
+     * @param targetModule The fully qualified classname of the target displayable module.
+     */
     public void setTargetModule(String targetModule) {
         this.targetModule = targetModule;
     }
 
+    /**
+     * Returns the array of configs for the dependencies of this module.
+     *
+     * @return dependencies An array of configs for the dependencies of this module.
+     */
     public Config[] getDependencies() {
         return dependencies;
     }
 
+    /**
+     * Sets the array of configs for the dependencies of this module.
+     *
+     * @param dependencies An array of configs for the dependencies of this module.
+     */
     public void setDependencies(Config[] dependencies) {
         this.dependencies = dependencies;
     }

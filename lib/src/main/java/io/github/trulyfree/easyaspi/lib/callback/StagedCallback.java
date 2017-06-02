@@ -20,6 +20,19 @@
 
 package io.github.trulyfree.easyaspi.lib.callback;
 
+/**
+ * A Callback interface extension which defines the <code>setStages</code> method. This allows
+ * sections of progress to be defined. Note that <code>onStart</code>, <code>onProgress</code> and
+ * <code>onFinish</code> methods should be called on the start, progress, and finish of each stage,
+ * respectively.
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.1-alpha
+ */
 public interface StagedCallback extends Callback {
+    /**
+     * Method to set the names of all the stages.
+     * @param names Names of the stages.
+     */
     public void setStages(String[] names);
 }

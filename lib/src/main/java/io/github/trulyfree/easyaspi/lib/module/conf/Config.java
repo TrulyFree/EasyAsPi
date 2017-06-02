@@ -20,27 +20,65 @@
 
 package io.github.trulyfree.easyaspi.lib.module.conf;
 
+/**
+ * Config for dependencies and the superclass of the Config for Modules.
+ *
+ * @see io.github.trulyfree.easyaspi.lib.module.conf.ModuleConfig
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.1-alpha
+ */
 public class Config {
+    /**
+     * The name attributed to this item.
+     */
     private String name;
+
+    /**
+     * The URL of the jar for this item.
+     */
     private String jarUrl;
 
+    /**
+     * Standard constructor for the Config, which just defines initial non-null values for fields.
+     */
     public Config() {
         this.name = "";
         this.jarUrl = "";
     }
 
+    /**
+     * Returns the name attributed to this item.
+     *
+     * @return name The name attributed to this item.
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Sets the name attributed to this item.
+     *
+     * @param name The name attributed to this item.
+     */
     public void setName(String name) {
         this.name = name;
     }
 
+    /**
+     * Returns the URL of the jar for this item.
+     *
+     * @return jarUrl The URL of the jar for this item.
+     */
     public String getJarUrl() {
         return jarUrl;
     }
 
+    /**
+     * Sets the URL of the jar for this item.
+     *
+     * @param jarUrl The URL of the jar for this item.
+     */
     public void setJarUrl(String jarUrl) {
         this.jarUrl = jarUrl;
     }

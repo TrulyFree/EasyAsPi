@@ -20,12 +20,29 @@
 
 package io.github.trulyfree.easyaspi.lib.callback;
 
+/**
+ * Simple callback for progress monitoring.
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.1-alpha
+ */
 public interface Callback {
 
+    /**
+     * To be called on startup of the target method by the target method.
+     */
     void onStart();
 
+    /**
+     * To be called on definable progress of the target method by the target method.
+     *
+     * @param current The current progress of the target method (by percentage completion).
+     */
     void onProgress(int current);
 
+    /**
+     * To be called on termination of the target method by the target method.
+     */
     void onFinish();
 
 }

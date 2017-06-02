@@ -36,13 +36,38 @@ import io.github.trulyfree.easyaspi.lib.io.FileHandler;
 import io.github.trulyfree.easyaspi.lib.module.ModuleHandler;
 import io.github.trulyfree.easyaspi.lib.module.conf.ModuleConfig;
 
+/**
+ * Implementation of EAPActivity which is guaranteed to be the implementation passed to modules on
+ * startup.
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.1-alpha
+ */
 public final class EAPDisplay extends AppCompatActivity implements EAPActivity {
 
+    /**
+     * DownloadHandler of this EAPActivity implementation.
+     */
     private volatile DownloadHandler downloadHandler;
+
+    /**
+     * FileHandler of this EAPActivity implementation.
+     */
     private volatile FileHandler fileHandler;
+
+    /**
+     * ModuleHandler of this EAPActivity implementation.
+     */
     private volatile ModuleHandler moduleHandler;
+
+    /**
+     * ExecutorService of this EAPActivity implementation.
+     */
     private volatile ExecutorService executorService;
 
+    /**
+     * Current module held by this EAPActivity implementation.
+     */
     private EAPDisplayableModule currentModule;
 
     @Override
@@ -179,14 +204,17 @@ public final class EAPDisplay extends AppCompatActivity implements EAPActivity {
         }
     }
 
+    @Override
     public DownloadHandler getDownloadHandler() {
         return downloadHandler;
     }
 
+    @Override
     public FileHandler getFileHandler() {
         return fileHandler;
     }
 
+    @Override
     public ModuleHandler getModuleHandler() {
         return moduleHandler;
     }

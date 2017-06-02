@@ -26,15 +26,26 @@ import android.widget.Button;
 import com.google.common.util.concurrent.FutureCallback;
 
 /**
- * Created by vtcakavsmoace on 5/30/17.
+ * Helper class for a variety of miscellaneous actions.
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.2-alpha
  */
-
 public class Utils {
 
+    /**
+     * Not to be instantiated.
+     */
     private Utils() {
         throw new UnsupportedOperationException("Instantiation not permitted.");
     }
 
+    /**
+     * Generates an OnClickListener from a given FutureCallback.
+     *
+     * @param callback The callback to execute when the click event occurs.
+     * @return listener The OnClickListener.
+     */
     public static View.OnClickListener generateOnClickListener(final FutureCallback<View> callback) {
         return new View.OnClickListener() {
             @Override

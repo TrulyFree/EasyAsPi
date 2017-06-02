@@ -64,32 +64,44 @@ import io.github.trulyfree.easyaspi.lib.module.conf.ModuleConfig;
 
 import static android.widget.LinearLayout.LayoutParams;
 
+/**
+ * MainActivity class serves as the front end introductory interface for EasyAsPi. It has two main
+ * functions: download modules and launch modules.
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.1-alpha
+ */
 public final class MainActivity extends AppCompatActivity implements EAPActivity {
 
-    public static final int ANIMATION_DURATION = 500;
+    /**
+     * Animation duration of all animations of EasyAsPi's introductory interface, in milliseconds.
+     */
+    private static final int ANIMATION_DURATION = 500;
+
+    /**
+     * DownloadHandler of this EAPActivity implementation.
+     */
     private DownloadHandler downloadHandler;
+
+    /**
+     * FileHandler of this EAPActivity implementation.
+     */
     private FileHandler fileHandler;
+
+    /**
+     * ModuleHandler of this EAPActivity implementation.
+     */
     private ModuleHandler moduleHandler;
+
+    /**
+     * ExecutorService of this EAPActivity implementation.
+     */
     private ExecutorService executorService;
 
+    /**
+     * Current ID of the navigation bar.
+     */
     private int currentID = R.id.navigation_home;
-
-    private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
-            = new BottomNavigationView.OnNavigationItemSelectedListener() {
-
-        @Override
-        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-            ViewSwitcher viewGroup = (ViewSwitcher) findViewById(R.id.content);
-            int id = item.getItemId();
-            if ((id == R.id.navigation_home || id == R.id.navigation_modules) && id != currentID) {
-                currentID = item.getItemId();
-                viewGroup.showNext();
-                return true;
-            }
-            return false;
-        }
-
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,6 +109,7 @@ public final class MainActivity extends AppCompatActivity implements EAPActivity
         setup();
     }
 
+    @Override
     public boolean setup() {
         downloadHandler = new DownloadHandler(this);
         fileHandler = new FileHandler(this);
@@ -105,7 +118,21 @@ public final class MainActivity extends AppCompatActivity implements EAPActivity
 
         setContentView(R.layout.activity_main);
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
-        navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
+        navigation.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                ViewSwitcher viewGroup = (ViewSwitcher) findViewById(R.id.content);
+                int id = item.getItemId();
+                if ((id == R.id.navigation_home || id == R.id.navigation_modules) && id != currentID) {
+                    currentID = item.getItemId();
+                    viewGroup.showNext();
+                    return true;
+                }
+                return false;
+            }
+
+        });
 
         ViewSwitcher viewSwitcher = (ViewSwitcher) findViewById(R.id.content);
         Animation in = AnimationUtils.loadAnimation(this, android.R.anim.slide_in_left);
@@ -229,37 +256,47 @@ public final class MainActivity extends AppCompatActivity implements EAPActivity
                                             executorService.submit(new Callable<Boolean>() {
                                                 @Override
                                                 public Boolean call() {
-                                                    boolean success = true, refreshAllModification = true;
-                                                    Button refreshAll = null, getNewModule = (Button) findViewById(R.id.new_module_config_confirm);
                                                     try {
-                                                        refreshAll = (Button) findViewById(R.id.refresh_all);
-                                                        refreshAll.setClickable(false);
-                                                    } catch (Throwable e) {
-                                                        refreshAllModification = false;
+                                                        boolean success = true, refreshAllModification = true;
+                                                        Button refreshAll = null, getNewModule = (Button) findViewById(R.id.new_module_config_confirm);
+                                                        try {
+                                                            refreshAll = (Button) findViewById(R.id.refresh_all);
+                                                            refreshAll.setClickable(false);
+                                                        } catch (Throwable e) {
+                                                            refreshAllModification = false;
+                                                        }
+                                                        getNewModule.setClickable(false);
+                                                        final TextView stager = (TextView) findViewById(R.id.new_module_config_downloadstage);
+                                                        final ProgressBar progressBar = (ProgressBar) findViewById(R.id.new_module_config_downloadprogress);
+                                                        try {
+                                                            runOnUiThread(new Runnable() {
+                                                                @Override
+                                                                public void run() {
+                                                                    resetConfigReturned();
+                                                                }
+                                                            });
+                                                            moduleHandler.getNewModule(makeModuleCallback(stager, progressBar),
+                                                                    finalConfig, null, true);
+                                                        } catch (IOException e) {
+                                                            e.printStackTrace();
+                                                            runOnUiThread(new Runnable() {
+                                                                @Override
+                                                                public void run() {
+                                                                    stager.setText("");
+                                                                    progressBar.setProgress(0);
+                                                                }
+                                                            });
+                                                            success = false;
+                                                        }
+                                                        getNewModule.setClickable(true);
+                                                        if (refreshAllModification) {
+                                                            refreshAll.setClickable(true);
+                                                        }
+                                                        return success;
+                                                    } catch (Throwable throwable) {
+                                                        throwable.printStackTrace();
+                                                        return false;
                                                     }
-                                                    getNewModule.setClickable(false);
-                                                    final TextView stager = (TextView) findViewById(R.id.new_module_config_downloadstage);
-                                                    final ProgressBar progressBar = (ProgressBar) findViewById(R.id.new_module_config_downloadprogress);
-                                                    try {
-                                                        resetConfigReturned();
-                                                        moduleHandler.getNewModule(makeModuleCallback(stager, progressBar),
-                                                                finalConfig, null, true);
-                                                    } catch (IOException e) {
-                                                        e.printStackTrace();
-                                                        runOnUiThread(new Runnable() {
-                                                            @Override
-                                                            public void run() {
-                                                                stager.setText("");
-                                                                progressBar.setProgress(0);
-                                                            }
-                                                        });
-                                                        success = false;
-                                                    }
-                                                    getNewModule.setClickable(true);
-                                                    if (refreshAllModification) {
-                                                        refreshAll.setClickable(true);
-                                                    }
-                                                    return success;
                                                 }
                                             });
                                         }
@@ -323,6 +360,9 @@ public final class MainActivity extends AppCompatActivity implements EAPActivity
         return false;
     }
 
+    /**
+     * Helper method which refreshes the module layout between module downloads/deletions.
+     */
     private void refreshFilling() {
         LinearLayout dashboard = (LinearLayout) findViewById(R.id.dashboard);
         dashboard.removeAllViewsInLayout();
@@ -410,6 +450,9 @@ public final class MainActivity extends AppCompatActivity implements EAPActivity
         }
     }
 
+    /**
+     *
+     */
     private void resetConfigReturned() {
         final ImageView configResponseBlock = (ImageView) findViewById(R.id.block_module_returned);
         LinearLayout layout = (LinearLayout) findViewById(R.id.module_returned_config);
@@ -456,6 +499,11 @@ public final class MainActivity extends AppCompatActivity implements EAPActivity
         }
     }
 
+    /**
+     * @param stageText
+     * @param progressBar
+     * @return
+     */
     private StagedCallback makeModuleCallback(final TextView stageText, final ProgressBar progressBar) {
         return new StagedCallback() {
             private String[] names;
@@ -507,14 +555,17 @@ public final class MainActivity extends AppCompatActivity implements EAPActivity
         };
     }
 
+    @Override
     public DownloadHandler getDownloadHandler() {
         return downloadHandler;
     }
 
+    @Override
     public FileHandler getFileHandler() {
         return fileHandler;
     }
 
+    @Override
     public ModuleHandler getModuleHandler() {
         return moduleHandler;
     }

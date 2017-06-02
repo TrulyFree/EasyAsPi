@@ -20,6 +20,8 @@
 
 package io.github.trulyfree.easyaspi.lib;
 
+import android.content.Context;
+
 import java.io.File;
 import java.util.concurrent.ExecutorService;
 
@@ -29,18 +31,73 @@ import io.github.trulyfree.easyaspi.lib.io.FileHandler;
 import io.github.trulyfree.easyaspi.lib.module.Module;
 import io.github.trulyfree.easyaspi.lib.module.ModuleHandler;
 
+/**
+ * The interface which all EAPActivities must extend. This is defined to allow mockable activities.
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.1-alpha
+ */
 public interface EAPActivity extends Module {
+    /**
+     * Returns the download handler owned by this activity.
+     *
+     * @return handler The download handler owned by this activity.
+     */
     public DownloadHandler getDownloadHandler();
+
+    /**
+     * Returns the file handler owned by this activity.
+     *
+     * @return handler The file handler owned by this activity.
+     */
     public FileHandler getFileHandler();
+
+    /**
+     * Returns the module handler owned by this activity.
+     *
+     * @return handler The module handler owned by this activity.
+     */
     public ModuleHandler getModuleHandler();
+
+    /**
+     * Returns the executor service owned by this activity.
+     *
+     * @return executorService The executor service owned by this activity.
+     */
     public ExecutorService getExecutorService();
+
+    /**
+     * Returns the module currently displayed by this activity.
+     *
+     * @return module The module currently displayed by this activity.
+     */
     public EAPDisplayableModule getDisplayableModule();
+
+    /**
+     * Sets the module currently displayed by this activity.
+     *
+     * @param displayableModule The module currently displayed by this activity.
+     * @return success If the module was successfully loaded by the activity.
+     */
     public boolean setDisplayableModule(EAPDisplayableModule displayableModule);
-    // For FileHandler support.
+
+    /**
+     * @see android.app.Application#getDir(String, int)
+     */
     public File getDir(String appdir, int modePrivate);
-    // For ModuleHandler support.
+
+    /**
+     * @see android.app.Application#getClassLoader()
+     */
     public ClassLoader getClassLoader();
+
+    /**
+     * @see android.app.Activity#runOnUiThread(Runnable)
+     */
     public void runOnUiThread(Runnable runnable);
-    // For Toast creation support.
+
+    /**
+     * @see android.widget.Toast#makeText(Context, CharSequence, int)
+     */
     public void displayToUser(String text, int time);
 }

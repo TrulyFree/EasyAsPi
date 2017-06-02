@@ -20,18 +20,34 @@
 
 package io.github.trulyfree.easyaspi.lib.callback;
 
+/**
+ * A StagedCallback implementation with no functionality. EmptyCallback should not be instantiated
+ * externally. Instead, use the object reference <code>EmptyCallback.EMPTY</code>.
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.1-alpha
+ */
 public class EmptyCallback implements StagedCallback {
 
+    /**
+     * The global instance for EmptyCallback.
+     */
     public static final EmptyCallback EMPTY = new EmptyCallback();
 
+    /**
+     * Constructor hidden to prevent external instantiation.
+     */
     private EmptyCallback() {}
 
     @Override
     public void onStart() {}
+
     @Override
     public void onProgress(int current) {}
+
     @Override
     public void onFinish() {}
+
     @Override
     public void setStages(String[] names) {}
 

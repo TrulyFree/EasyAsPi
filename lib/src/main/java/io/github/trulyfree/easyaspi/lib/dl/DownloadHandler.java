@@ -21,6 +21,7 @@
 package io.github.trulyfree.easyaspi.lib.dl;
 
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -34,27 +35,65 @@ import io.github.trulyfree.easyaspi.lib.EAPActivity;
 import io.github.trulyfree.easyaspi.lib.callback.Callback;
 import io.github.trulyfree.easyaspi.lib.callback.EmptyCallback;
 
+/**
+ * Helper class for all downloading actions taken by EasyAsPi. You do not have to use this if you
+ * don't want to. :P
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.1-alpha
+ */
 public class DownloadHandler {
 
+    /**
+     * Buffer size for all downloads.
+     */
     private final static int BUFFER_SIZE = 4096;
 
+    /**
+     * Timeout for all connections.
+     */
     private final static int TIMEOUT = 3000;
 
+    /**
+     * The activity which owns this download handler.
+     */
     private final EAPActivity activity;
 
+    /**
+     * Standard constructor for DownloadHandler. All DownloadHandlers MUST be instantiated with a
+     * reference to an EAPActivity.
+     *
+     * @param activity The activity which owns this download handler.
+     */
     public DownloadHandler(@NonNull EAPActivity activity) {
         this.activity = activity;
     }
 
-    public String download(Callback callback,
+    /**
+     * Downloads an item and returns it as a String.
+     *
+     * @param callback Callback for progress updates on the download.
+     * @param urlString The URL of this download.
+     * @return content The content of the target URL as a String.
+     * @throws IOException If the download fails.
+     */
+    public String download(@Nullable Callback callback,
                            @NonNull String urlString) throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         download(output, callback, urlString);
         return new String(output.toByteArray());
     }
 
+    /**
+     * Downloads an item and writes it to an output stream during the download.
+     *
+     * @param output The output stream to write to.
+     * @param callback Callback for progress updates on the download.
+     * @param urlString The URL of this download.
+     * @throws IOException If the download fails.
+     */
     public void download(@NonNull OutputStream output,
-                         Callback callback,
+                         @Nullable Callback callback,
                          @NonNull String urlString) throws IOException {
         broadcastDownload(urlString);
         URL url = new URL(urlString);
@@ -88,6 +127,13 @@ public class DownloadHandler {
         callback.onFinish();
     }
 
+    /**
+     * Returns a readable (buffered) input stream that downloads may be read from.
+     *
+     * @param urlString The URL of this download.
+     * @return downloadStream A readable (buffered) input stream from which to read the download.
+     * @throws IOException If the connection fails.
+     */
     public InputStream getDownloadStream(@NonNull String urlString) throws IOException {
         broadcastDownload(urlString);
         URL url = new URL(urlString);
@@ -98,10 +144,20 @@ public class DownloadHandler {
         return new BufferedInputStream(url.openStream());
     }
 
+    /**
+     * Debug method for checking when downloads occur.
+     *
+     * @param urlString The URL of this download.
+     */
     private void broadcastDownload(@NonNull String urlString) {
         System.out.println("Downloaded from " + urlString);
     }
 
+    /**
+     * Returns the activity which owns this DownloadHandler.
+     *
+     * @return activity The activity which owns this DownloadHandler.
+     */
     public EAPActivity getActivity() {
         return activity;
     }

@@ -21,11 +21,30 @@
 package io.github.trulyfree.easyaspi.lib.module;
 
 /**
- * Created by vtcakavsmoace on 5/22/17.
+ * Interface which all Module-based classes must implement.
+ *
+ * @author vtcakavsmoace
+ * @since v0.0.1-alpha
  */
-
 public interface Module {
+    /**
+     * Sets up this module. There will likely be prerequisite method calls.
+     *
+     * @return success The success of the setup operation.
+     */
     public boolean setup();
+
+    /**
+     * Checks whether or not the Module is ready for use.
+     *
+     * @return ready The readiness of this module.
+     */
     public boolean isReady();
+
+    /**
+     * Terminates this module. The module's methods should NOT be invoked after this is called.
+     *
+     * @return success The success of the destroy operation.
+     */
     public boolean destroy();
 }
